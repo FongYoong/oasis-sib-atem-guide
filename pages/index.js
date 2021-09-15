@@ -1,7 +1,6 @@
 import Head from 'next/head';
 //import { useRouter } from 'next/router';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useInterval } from 'react-interval-hook';
 import { Zoom } from "react-awesome-reveal";
 import { MotionButton } from '../components/MotionElements';
 import { useBreakpointValue, useDisclosure, Image as ChakraImage, Button, HStack, Box, Divider, Heading, Flex, VStack, Icon, IconButton, Switch,
@@ -24,7 +23,7 @@ import {presenterImages} from '../lib/presenterData';
 import {cam1Images, cam2Images} from '../lib/camData';
 import { MdContentCut } from "react-icons/md";
 import { BsCameraVideoFill } from "react-icons/bs";
-import { FaDesktop, FaArrowCircleUp, FaArrowCircleDown, FaArrowCircleLeft, FaArrowCircleRight } from "react-icons/fa";
+import { FaDesktop } from "react-icons/fa";
 import { RiRemoteControl2Line, RiPictureInPictureFill } from "react-icons/ri";
 import { AiFillAudio } from "react-icons/ai";
 import { CgArrowUpR, CgArrowDownR, CgArrowLeftR, CgArrowRightR } from "react-icons/cg";
@@ -47,17 +46,18 @@ export default function Home() {
     const [presenterImageURL, setPresenterImageURL] = useState('images/worship/1.png');
     const [cam1ImageUrl, setCam1ImageUrl] = useState('images/cam1/1.png');
     const [cam2ImageUrl, setCam2ImageUrl] = useState('images/cam2/1.png');
-    const [animProgress, setAnimProgress] = useState(0); // canvas animation progress
     // Progress
-    const [animCanvasX, setAnimCanvasX] = useState(0); 
-    const [animCanvasY, setAnimCanvasY] = useState(0);
-    const [animCanvasWidth, setAnimCanvasWidth] = useState(0);
-    const [animCanvasHeight, setAnimCanvasHeight] = useState(0);
+    const animRequestRef = useRef(null);
+    const animProgressRef = useRef(0);
+    const animCanvasXRef = useRef(0); 
+    const animCanvasYRef = useRef(0);
+    const animCanvasWidthRef = useRef(0);
+    const animCanvasHeightRef = useRef(0);
     // Final
-    const [animCanvasXFinal, setAnimCanvasXFinal] = useState(0);
-    const [animCanvasYFinal, setAnimCanvasYFinal] = useState(0);
-    const [animCanvasWidthFinal, setAnimCanvasWidthFinal] = useState(0);
-    const [animCanvasHeightFinal, setAnimCanvasHeightFinal] = useState(0);
+    const animCanvasXFinalRef = useRef(0);
+    const animCanvasYFinalRef = useRef(0);
+    const animCanvasWidthFinalRef = useRef(0);
+    const animCanvasHeightFinalRef = useRef(0);
 
     // States
     const [cropped, setCropped] = useState(true);
@@ -148,22 +148,7 @@ export default function Home() {
             // Do nothing
           }
           obsContext.drawImage(cam1ImageElement, 0, 0, cam1ImageElement.width, cam1ImageElement.height,
-                          animCanvasX, animCanvasY, animCanvasWidth, animCanvasHeight);
-/*           if (pipDirection == 'A') {
-            obsContext.drawImage(cam1ImageElement, 0, 0, cam1ImageElement.width, cam1ImageElement.height,
-                                      0, obsCanvas.height * 0.7, obsCanvas.width * 0.3, obsCanvas.height * 0.3);
-          }
-          else if (pipDirection == 'B') {
-            obsContext.drawImage(cam1ImageElement, 0, 0, cam1ImageElement.width, cam1ImageElement.height,
-                                      obsCanvas.width * 0.7, obsCanvas.height * 0.7, obsCanvas.width * 0.3, obsCanvas.height * 0.3);
-          }
-          else if (pipDirection == 'Full') {
-            obsContext.drawImage(cam1ImageElement, 0, 0, cam1ImageElement.width, cam1ImageElement.height,
-                                      0, 0, obsCanvas.width, obsCanvas.height);
-          }
-          else if (pipDirection == 'None') {
-            // Do nothing
-          } */
+                            animCanvasXRef.current, animCanvasYRef.current, animCanvasWidthRef.current, animCanvasHeightRef.current);
         }
       }
       if (!cropped) {
@@ -228,40 +213,33 @@ export default function Home() {
       presenterCanvas.width = width; // 1280
       presenterCanvas.height = height; // 720
 
-      setAnimCanvasX(width * 0.7);
-      setAnimCanvasY(height * 0.7);
-      setAnimCanvasWidth(width * 0.3);
-      setAnimCanvasHeight(height * 0.3);
-      setAnimCanvasXFinal(width * 0.7);
-      setAnimCanvasYFinal(height * 0.7);
-      setAnimCanvasWidthFinal(width * 0.3);
-      setAnimCanvasHeightFinal(height * 0.3);
+      animCanvasXRef.current = width * 0.7;
+      animCanvasYRef.current = height * 0.7;
+      animCanvasWidthRef.current = width * 0.3;
+      animCanvasHeightRef.current = height * 0.3;
+      animCanvasXFinalRef.current = width * 0.7;
+      animCanvasYFinalRef.current = height * 0.7;
+      animCanvasWidthFinalRef.current = width * 0.3;
+      animCanvasHeightFinalRef.current = height * 0.3;
     }, []);
-    const animDuration = 500;
-    const animSteps = 1000;
-    const { start: startCanvasAnimate, stop: stopCanvasAnimate, isActive: isActiveCanvasAnimate } = useInterval(
-        () => {
-            setAnimCanvasX(animCanvasX + animProgress * (animCanvasXFinal - animCanvasX));
-            setAnimCanvasY(animCanvasY + animProgress * (animCanvasYFinal - animCanvasY));
-            setAnimCanvasWidth(animCanvasWidth + animProgress * (animCanvasWidthFinal - animCanvasWidth));
-            setAnimCanvasHeight(animCanvasHeight + animProgress * (animCanvasHeightFinal - animCanvasHeight));
-            displayOBS();
-            displayPresenter();
-            setAnimProgress(animProgress + 1 / animSteps);
-            if (animProgress >= 1) {
-              stopCanvasAnimate();
-            }
-        },
-        animDuration/animSteps, // milliseconds
-        {
-            autoStart: false,
-            immediate: false,
-            selfCorrecting: false,
-            onFinish: () => {
-                alert('Animation stopped');
-            },
-        }
-    );
+
+    const animatePiP = () => {
+      if (animProgressRef.current < 1){
+        console.log(animProgressRef.current);
+        const animProgress = animProgressRef.current;
+        animCanvasXRef.current = animCanvasXRef.current + animProgress * (animCanvasXFinalRef.current - animCanvasXRef.current);
+        animCanvasYRef.current = animCanvasYRef.current + animProgress * (animCanvasYFinalRef.current - animCanvasYRef.current);
+        animCanvasWidthRef.current = animCanvasWidthRef.current + animProgress * (animCanvasWidthFinalRef.current - animCanvasWidthRef.current);
+        animCanvasHeightRef.current = animCanvasHeightRef.current + animProgress * (animCanvasHeightFinalRef.current - animCanvasHeightRef.current);
+        displayOBS();
+        displayPresenter();
+        animProgressRef.current = animProgress + 1 / 100;
+        animRequestRef.current = requestAnimationFrame(animatePiP);
+      }
+      else{
+          cancelAnimationFrame(animRequestRef.current);
+      }
+    }
 
     const changePipPosition = (dir) => {
       if (dir != pipDirection) {
@@ -287,19 +265,18 @@ export default function Home() {
           h = ch;
         }
         else if (dir == 'None') {
-          // Do nothing
-          x = animCanvasX;
-          y = animCanvasY;
+          x = animCanvasXRef.current;
+          y = animCanvasYRef.current;
           w = 0;
           h = 0;
         }
-        setAnimCanvasXFinal(x);
-        setAnimCanvasYFinal(y);
-        setAnimCanvasWidthFinal(w);
-        setAnimCanvasHeightFinal(h);
-        setAnimProgress(0);
-        stopCanvasAnimate();
-        startCanvasAnimate();
+        animCanvasXFinalRef.current = x;
+        animCanvasYFinalRef.current = y;
+        animCanvasWidthFinalRef.current = w;
+        animCanvasHeightFinalRef.current = h;
+        animProgressRef.current = 0;
+        cancelAnimationFrame(animRequestRef.current);
+        animRequestRef.current = requestAnimationFrame(animatePiP);
       }
       setPipDirection(dir);
     };
@@ -354,7 +331,12 @@ export default function Home() {
                       <canvas ref={obsCanvasRef} />
                     </Box>
                   </HStack>
-                  <ChakraImage ref={obsImageRef} onLoad={() => displayOBS(true)} display='none' alt='obs' src={obsImageURL} />
+                  <ChakraImage ref={obsImageRef}
+                    onLoad={() => {
+                      displayOBS(true);
+                      displayPresenter();
+                    }}
+                    display='none' alt='obs' src={obsImageURL} />
                   <ChakraImage ref={presenterImageRef} display='none' alt='presenter' src={presenterImageURL} />
                   <ChakraImage ref={cam1ImageRef} display='none' alt='cam1' src={cam1ImageUrl} />
 
