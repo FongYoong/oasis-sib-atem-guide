@@ -10,16 +10,16 @@ ModalBody,
 ModalCloseButton
 } from '@chakra-ui/react';
 import { MotionButton, MotionImage } from './MotionElements';
-import { GrCheckboxSelected } from 'react-icons/gr';
+import { FaRegCheckCircle } from 'react-icons/fa';
 
-export default memo(function ImageSelector({children, data, onClick}) {
+export default memo(function ImageSelector({children, buttonIcon, data, onClick}) {
     const modalState = useDisclosure();
     const [selectedCategory, setSelectedCategory] = useState(Object.keys(data)[0]);
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
     return (
         <>
-        <MotionButton onClick={modalState.onOpen} >
+        <MotionButton leftIcon={buttonIcon} onClick={modalState.onOpen} >
             {children}
         </MotionButton>
         <Modal size='full' isOpen={modalState.isOpen} onClose={modalState.onClose}>
@@ -44,8 +44,8 @@ export default memo(function ImageSelector({children, data, onClick}) {
                                             <Zoom key={key} delay={key * 100} duration='300'>
                                                 <Box position='relative' >
                                                     <MotionImage
-                                                        filter={selected ? 'brightness(50%)' : ''}
-                                                        m='4' opacity='0.8' borderColor='#fcbe03' borderRadius='0' border='2px'
+                                                        filter={selected ? 'contrast(50%)' : ''}
+                                                        m='4' opacity='0.85' borderColor='#fcbe03' borderRadius='0' border='2px'
                                                         whileHover={{ scale: 1.05, opacity:1, borderRadius:'1em', boxShadow:"10px 10px 0 rgba(0, 0, 0, 0.2)" } }
                                                         whileTap={{ scale: 0.9 }}
                                                         w='25vw' fit='cover' alt='obs' src={imageUrl}
@@ -57,7 +57,7 @@ export default memo(function ImageSelector({children, data, onClick}) {
                                                         }}
                                                     />
                                                     {selected &&
-                                                        <Icon boxSize='5vw' as={GrCheckboxSelected} position='absolute' top='40%' left='45%' />
+                                                        <Icon boxSize='5vw' color="white" pointerEvents='none' as={FaRegCheckCircle} position='absolute' top='40%' left='45%' />
                                                     }
                                                 </Box>
                                             </Zoom>
@@ -71,10 +71,9 @@ export default memo(function ImageSelector({children, data, onClick}) {
             </ModalBody>
 
             <ModalFooter>
-                <Button colorScheme="blue" mr={3} onClick={modalState.onClose}>
-                Close
+                <Button colorScheme="purple" mr={3} onClick={modalState.onClose}>
+                    Close
                 </Button>
-                <Button variant="ghost">Secondary Action</Button>
             </ModalFooter>
             </ModalContent>
         </Modal>

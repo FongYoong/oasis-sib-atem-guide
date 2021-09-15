@@ -12,7 +12,7 @@ export default memo(function MicIndicator({children, micEnabled, volume, setVolu
             <Heading textDecoration={micEnabled?'':'line-through'} opacity={micEnabled?'1':'0.5'} textAlign='center' m={4} color='white' fontSize="xl" fontWeight="extrabold" >
                 {children}
             </Heading>
-            <Slider w='70vw' h='0.5em' value={volume} onChange={(val) => setVolume(val)} >
+            <Slider w='35vw' h='0.5em' value={volume} onChange={(val) => setVolume(val)} >
             <SliderTrack bg="red.100">
                 <SliderFilledTrack bg="tomato" />
             </SliderTrack>

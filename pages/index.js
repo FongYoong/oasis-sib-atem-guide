@@ -1,9 +1,10 @@
 import Head from 'next/head';
 //import { useRouter } from 'next/router';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useInterval } from 'react-interval-hook';
 import { Zoom } from "react-awesome-reveal";
 import { MotionButton } from '../components/MotionElements';
-import { useBreakpointValue, useDisclosure, Image as ChakraImage, HStack, Box, Divider, Heading, Flex, VStack, Progress,
+import { useBreakpointValue, useDisclosure, Image as ChakraImage, Button, HStack, Box, Divider, Heading, Flex, VStack, Icon, IconButton, Switch,
 Accordion,
 AccordionItem,
 AccordionButton,
@@ -21,6 +22,12 @@ import MicIndicator from '../components/atem/MicIndicator';
 import ImageSelector from '../components/ImageSelector';
 import {presenterImages} from '../lib/presenterData';
 import {cam1Images, cam2Images} from '../lib/camData';
+import { MdContentCut } from "react-icons/md";
+import { BsCameraVideoFill } from "react-icons/bs";
+import { FaDesktop, FaArrowCircleUp, FaArrowCircleDown, FaArrowCircleLeft, FaArrowCircleRight } from "react-icons/fa";
+import { RiRemoteControl2Line, RiPictureInPictureFill } from "react-icons/ri";
+import { AiFillAudio } from "react-icons/ai";
+import { CgArrowUpR, CgArrowDownR, CgArrowLeftR, CgArrowRightR } from "react-icons/cg";
 
 const limitVolume = (value) => {
   return Math.min(Math.max(value, 0), 100);
@@ -29,19 +36,34 @@ const limitVolume = (value) => {
 export default function Home() {
     //const router = useRouter();
     //const breakpoint = useBreakpointValue({ base: "base", md: "md", lg: "lg" });
+    const atemRef = useRef(null);
     // Canvas
     const obsImageRef = useRef(null);
     const presenterImageRef = useRef(null);
+    const cam1ImageRef = useRef(null);
     const obsCanvasRef = useRef(null);
     const presenterCanvasRef = useRef(null);
     const [obsImageURL, setObsImageURL] = useState('images/cam1/1.png');
     const [presenterImageURL, setPresenterImageURL] = useState('images/worship/1.png');
     const [cam1ImageUrl, setCam1ImageUrl] = useState('images/cam1/1.png');
     const [cam2ImageUrl, setCam2ImageUrl] = useState('images/cam2/1.png');
+    const [animProgress, setAnimProgress] = useState(0); // canvas animation progress
+    // Progress
+    const [animCanvasX, setAnimCanvasX] = useState(0); 
+    const [animCanvasY, setAnimCanvasY] = useState(0);
+    const [animCanvasWidth, setAnimCanvasWidth] = useState(0);
+    const [animCanvasHeight, setAnimCanvasHeight] = useState(0);
+    // Final
+    const [animCanvasXFinal, setAnimCanvasXFinal] = useState(0);
+    const [animCanvasYFinal, setAnimCanvasYFinal] = useState(0);
+    const [animCanvasWidthFinal, setAnimCanvasWidthFinal] = useState(0);
+    const [animCanvasHeightFinal, setAnimCanvasHeightFinal] = useState(0);
 
     // States
     const [cropped, setCropped] = useState(true);
     const [chromaKeyEnabled, setChromaKeyEnabled] = useState(true);
+    const [pipEnabled, setPipEnabled] = useState(true);
+    const [pipDirection, setPipDirection] = useState('B'); // A, B, Full, None
     // Mics
     const [mic1Enabled, setMic1Enabled] = useState(false);
     const [mic1Volume, setMic1Volume] = useState(50);
@@ -57,7 +79,11 @@ export default function Home() {
     const [chan4Enabled, setChan4Enabled] = useState(false);
     const [chan4Volume, setChan4Volume] = useState(50);
     const [liveChannel, setLiveChannel] = useState(0);
-    const [previewChannel, setPreviewChannel] = useState(1);
+    const [previewChannel, setPreviewChannel] = useState(3);
+
+    const scrollToOBS = () => {
+      obsCanvasRef.current.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"});
+    };
 
     // Display functions
     const displayOBS = (startup=false) => {
@@ -90,7 +116,6 @@ export default function Home() {
       const presenterImageElement = presenterImageRef.current;
       // Draw presenter image
       presenterContext.drawImage(presenterImageElement, 0, 0, presenterCanvas.width, presenterCanvas.height);
-
       // Green screen effect
       if (chromaKeyEnabled) {
         const obsImage = obsContext.getImageData(0, 0, obsCanvas.width, obsCanvas.height);
@@ -115,41 +140,80 @@ export default function Home() {
         // Set image data
         obsContext.putImageData(obsImage, 0, 0);
       }
-      if (!cropped) {
-        cropOBS(obsCanvas, obsContext, obsCanvas.width, obsCanvas.height);
+      if (pipEnabled) {
+        const cam1ImageElement = cam1ImageRef.current;
+        if (cam1ImageElement.complete) {
+          // Draw Camera 1 as PiP
+          if (pipDirection == 'None') {
+            // Do nothing
+          }
+          obsContext.drawImage(cam1ImageElement, 0, 0, cam1ImageElement.width, cam1ImageElement.height,
+                          animCanvasX, animCanvasY, animCanvasWidth, animCanvasHeight);
+/*           if (pipDirection == 'A') {
+            obsContext.drawImage(cam1ImageElement, 0, 0, cam1ImageElement.width, cam1ImageElement.height,
+                                      0, obsCanvas.height * 0.7, obsCanvas.width * 0.3, obsCanvas.height * 0.3);
+          }
+          else if (pipDirection == 'B') {
+            obsContext.drawImage(cam1ImageElement, 0, 0, cam1ImageElement.width, cam1ImageElement.height,
+                                      obsCanvas.width * 0.7, obsCanvas.height * 0.7, obsCanvas.width * 0.3, obsCanvas.height * 0.3);
+          }
+          else if (pipDirection == 'Full') {
+            obsContext.drawImage(cam1ImageElement, 0, 0, cam1ImageElement.width, cam1ImageElement.height,
+                                      0, 0, obsCanvas.width, obsCanvas.height);
+          }
+          else if (pipDirection == 'None') {
+            // Do nothing
+          } */
+        }
       }
-    }
-
-    const cropOBS = (obsCanvas, obsContext, width, height) => {
-      // Draw cropped version
-      obsContext.drawImage(obsCanvas, 0, 0, width, height, width*0.05, height*0.05, width * 0.9, height*0.9);
-
-      // Draw rectangle
-      obsContext.beginPath();
-      obsContext.lineWidth = (height*0.1).toString();
-      obsContext.strokeStyle = "black";
-      obsContext.rect(0, 0, width, height);
-      obsContext.stroke();
-      // Draw vertical left line
-      obsContext.beginPath();
-      obsContext.lineWidth = (width*0.1).toString();
-      obsContext.strokeStyle = "black";
-      obsContext.moveTo(0, 0);
-      obsContext.lineTo(0, height);
-      obsContext.stroke();
-      // Draw vertical right line
-      obsContext.beginPath();
-      obsContext.lineWidth = (width*0.1).toString();
-      obsContext.strokeStyle = "black";
-      obsContext.moveTo(width, 0);
-      obsContext.lineTo(width, height);
-      obsContext.stroke();
+      if (!cropped) {
+        const width = obsCanvas.width;
+        const height = obsCanvas.height;
+        // Draw cropped version
+        obsContext.drawImage(obsCanvas, 0, 0, width, height, width*0.05, height*0.05, width * 0.9, height*0.9);
+        // Draw black rectangle
+        obsContext.beginPath();
+        obsContext.lineWidth = (height*0.1).toString();
+        obsContext.strokeStyle = "black";
+        obsContext.rect(0, 0, width, height);
+        obsContext.stroke();
+        // Draw black vertical left line
+        obsContext.beginPath();
+        obsContext.lineWidth = (width*0.1).toString();
+        obsContext.strokeStyle = "black";
+        obsContext.moveTo(0, 0);
+        obsContext.lineTo(0, height);
+        obsContext.stroke();
+        // Draw black vertical right line
+        obsContext.beginPath();
+        obsContext.lineWidth = (width*0.1).toString();
+        obsContext.strokeStyle = "black";
+        obsContext.moveTo(width, 0);
+        obsContext.lineTo(width, height);
+        obsContext.stroke();
+      }
     }
 
     useEffect(() => {
       displayOBS();
       displayPresenter();
-    }, [presenterImageURL, cropped, chromaKeyEnabled]); // presenterImageURL, liveChannel, 
+      scrollToOBS();
+    }, [presenterImageURL, cam1ImageUrl, pipEnabled, pipDirection, chromaKeyEnabled, cropped]);
+
+    useEffect(() => {
+      if (liveChannel == 0) {
+        setObsImageURL(cam1ImageUrl);
+      }
+      else if (liveChannel == 1) {
+        setObsImageURL('images/black.png');
+      }
+      else if (liveChannel == 2) {
+        setObsImageURL(presenterImageURL);
+      }
+      else if (liveChannel == 3) {
+        setObsImageURL(cam2ImageUrl);
+      }
+    }, [liveChannel, cam1ImageUrl, presenterImageURL, cam2ImageUrl]);
 
     useEffect(() => {
       const multiplier = 2.5;
@@ -163,22 +227,82 @@ export default function Home() {
       const presenterCanvas = presenterCanvasRef.current;
       presenterCanvas.width = width; // 1280
       presenterCanvas.height = height; // 720
-    }, []);
 
-    useEffect(() => {
-      if (liveChannel == 0) {
-        setObsImageURL(cam1ImageUrl);
+      setAnimCanvasX(width * 0.7);
+      setAnimCanvasY(height * 0.7);
+      setAnimCanvasWidth(width * 0.3);
+      setAnimCanvasHeight(height * 0.3);
+      setAnimCanvasXFinal(width * 0.7);
+      setAnimCanvasYFinal(height * 0.7);
+      setAnimCanvasWidthFinal(width * 0.3);
+      setAnimCanvasHeightFinal(height * 0.3);
+    }, []);
+    const animDuration = 500;
+    const animSteps = 1000;
+    const { start: startCanvasAnimate, stop: stopCanvasAnimate, isActive: isActiveCanvasAnimate } = useInterval(
+        () => {
+            setAnimCanvasX(animCanvasX + animProgress * (animCanvasXFinal - animCanvasX));
+            setAnimCanvasY(animCanvasY + animProgress * (animCanvasYFinal - animCanvasY));
+            setAnimCanvasWidth(animCanvasWidth + animProgress * (animCanvasWidthFinal - animCanvasWidth));
+            setAnimCanvasHeight(animCanvasHeight + animProgress * (animCanvasHeightFinal - animCanvasHeight));
+            displayOBS();
+            displayPresenter();
+            setAnimProgress(animProgress + 1 / animSteps);
+            if (animProgress >= 1) {
+              stopCanvasAnimate();
+            }
+        },
+        animDuration/animSteps, // milliseconds
+        {
+            autoStart: false,
+            immediate: false,
+            selfCorrecting: false,
+            onFinish: () => {
+                alert('Animation stopped');
+            },
+        }
+    );
+
+    const changePipPosition = (dir) => {
+      if (dir != pipDirection) {
+        const cw = obsCanvasRef.current.width;
+        const ch = obsCanvasRef.current.height;
+        let x, y, w, h;
+        if (dir == 'A') {
+          x = 0;
+          y = ch * 0.7;
+          w = cw * 0.3;
+          h = ch * 0.3;
+        }
+        else if (dir == 'B') {
+          x = cw * 0.7;
+          y = ch * 0.7;
+          w = cw * 0.3;
+          h = ch * 0.3;
+        }
+        else if (dir == 'Full') {
+          x = 0;
+          y = 0;
+          w = cw;
+          h = ch;
+        }
+        else if (dir == 'None') {
+          // Do nothing
+          x = animCanvasX;
+          y = animCanvasY;
+          w = 0;
+          h = 0;
+        }
+        setAnimCanvasXFinal(x);
+        setAnimCanvasYFinal(y);
+        setAnimCanvasWidthFinal(w);
+        setAnimCanvasHeightFinal(h);
+        setAnimProgress(0);
+        stopCanvasAnimate();
+        startCanvasAnimate();
       }
-      else if (liveChannel == 1) {
-        setObsImageURL('');
-      }
-      else if (liveChannel == 2) {
-        setObsImageURL(presenterImageURL);
-      }
-      else if (liveChannel == 3) {
-        setObsImageURL(cam2ImageUrl);
-      }
-    }, [liveChannel, cam1ImageUrl, presenterImageURL, cam2ImageUrl]);
+      setPipDirection(dir);
+    };
 
     return (
         <div>
@@ -187,34 +311,39 @@ export default function Home() {
             </Head>
             <main>
               <Navbar />
+              <Button leftIcon={<RiRemoteControl2Line />} position='fixed' zIndex='1000' m='8' bottom='0' right='0'
+                onClick={() => atemRef.current.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"})}
+              >
+                Go to Atem
+              </Button>
               <VStack>
                 <NavbarSpace />
                 <VStack spacing={4} w="100%" h='100%' align="center" justify="center">
                   <Heading textAlign='center' m={4} color='white' fontSize="4xl" fontWeight="extrabold" >
                     Display
                   </Heading>
-                  <ImageSelector data={presenterImages}
+                  <ImageSelector data={presenterImages} buttonIcon={<FaDesktop />}
                     onClick={(category, imageUrl) => {
                       setPresenterImageURL(imageUrl);
                     }}
                   >
                     Slides
                   </ImageSelector>
-                  <ImageSelector data={cam1Images}
+                  <ImageSelector data={cam1Images} buttonIcon={<BsCameraVideoFill />}
                     onClick={(category, imageUrl) => {
                       setCam1ImageUrl(imageUrl);
                     }}
                   >
                     Camera 1
                   </ImageSelector>
-                  <ImageSelector data={cam2Images}
+                  <ImageSelector data={cam2Images} buttonIcon={<BsCameraVideoFill />}
                     onClick={(category, imageUrl) => {
                       setCam2ImageUrl(imageUrl);
                     }}
                   >
                     Camera 2
                   </ImageSelector>
-                  <MotionButton onClick={() => setCropped(!cropped)} >
+                  <MotionButton leftIcon={<MdContentCut />} onClick={() => setCropped(!cropped)} >
                     Transition to {cropped?'uncropped':'cropped'}
                   </MotionButton>
                   <HStack spacing='4' align="center" justify="center" >
@@ -226,46 +355,94 @@ export default function Home() {
                     </Box>
                   </HStack>
                   <ChakraImage ref={obsImageRef} onLoad={() => displayOBS(true)} display='none' alt='obs' src={obsImageURL} />
-                  <ChakraImage ref={presenterImageRef} display='none' alt='obs' src={presenterImageURL} />
+                  <ChakraImage ref={presenterImageRef} display='none' alt='presenter' src={presenterImageURL} />
+                  <ChakraImage ref={cam1ImageRef} display='none' alt='cam1' src={cam1ImageUrl} />
 
                   {/* Mic controls */}
+                  <Flex wrap='wrap' w='100%' align='start' justify='space-between' >
+                    <Accordion allowToggle flex='1' p='4' >
+                        <AccordionItem border='0' >
+                            <AccordionButton py='4' borderRadius='1em' bg='red.500' _hover={{ bg: "tomato", color: "tomato" }} _expanded={{ bg: "tomato", color: "white" }} >
+                              <Icon boxSize='5vh' color="white" pointerEvents='none' as={AiFillAudio} />
+                              <Heading flex="1" textAlign='center' color='white' fontSize="2xl" fontWeight="extrabold" >
+                                Mic Controls
+                              </Heading>
+                              <AccordionIcon />
+                            </AccordionButton>
+                        <AccordionPanel w='100%' >
+                          <Flex align="center" justify="center" >
+                            <VStack spacing='4' align="end" justify="end" >
+                              <MicIndicator alignSelf='flex-end' micEnabled={mic1Enabled} volume={mic1Volume} setVolume={setMic1Volume} >
+                                Mic 1
+                              </MicIndicator>
+                              <MicIndicator alignSelf='flex-end' micEnabled={mic2Enabled} volume={mic2Volume} setVolume={setMic2Volume} >
+                                Mic 2
+                              </MicIndicator>
+                              <MicIndicator alignSelf='flex-end' micEnabled={chan1Enabled} volume={chan1Volume} setVolume={setChan1Volume} >
+                                Channel 1
+                              </MicIndicator>
+                              <MicIndicator alignSelf='flex-end' micEnabled={chan2Enabled} volume={chan2Volume} setVolume={setChan2Volume} >
+                                Channel 2
+                              </MicIndicator>
+                              <MicIndicator alignSelf='flex-end' micEnabled={chan3Enabled} volume={chan3Volume} setVolume={setChan3Volume} >
+                                Channel 3
+                              </MicIndicator>
+                              <MicIndicator alignSelf='flex-end' micEnabled={chan4Enabled} volume={chan4Volume} setVolume={setChan4Volume} >
+                                Channel 4
+                              </MicIndicator>
+                            </VStack>
+                          </Flex>
+                        </AccordionPanel>
+                      </AccordionItem>
+                    </Accordion>
                   
-                  <Accordion allowToggle p='4' w='100%' >
-                      <AccordionItem border='0' >
-                          <AccordionButton py='4' borderRadius='1em' bg='red.500' _hover={{ bg: "tomato", color: "tomato" }} _expanded={{ bg: "tomato", color: "white" }} >
-                            <Heading flex="1" textAlign='center' color='white' fontSize="4xl" fontWeight="extrabold" >
-                              Mic Controls
-                            </Heading>
-                            <AccordionIcon />
-                          </AccordionButton>
-                      <AccordionPanel w='100%' >
-                        <Flex align="center" justify="center" >
-                          <VStack spacing='4' align="end" justify="end" >
-                            <MicIndicator alignSelf='flex-end' micEnabled={mic1Enabled} volume={mic1Volume} setVolume={setMic1Volume} >
-                              Mic 1
-                            </MicIndicator>
-                            <MicIndicator alignSelf='flex-end' micEnabled={mic2Enabled} volume={mic2Volume} setVolume={setMic2Volume} >
-                              Mic 2
-                            </MicIndicator>
-                            <MicIndicator alignSelf='flex-end' micEnabled={chan1Enabled} volume={chan1Volume} setVolume={setChan1Volume} >
-                              Channel 1
-                            </MicIndicator>
-                            <MicIndicator alignSelf='flex-end' micEnabled={chan2Enabled} volume={chan2Volume} setVolume={setChan2Volume} >
-                              Channel 2
-                            </MicIndicator>
-                            <MicIndicator alignSelf='flex-end' micEnabled={chan3Enabled} volume={chan3Volume} setVolume={setChan3Volume} >
-                              Channel 3
-                            </MicIndicator>
-                            <MicIndicator alignSelf='flex-end' micEnabled={chan4Enabled} volume={chan4Volume} setVolume={setChan4Volume} >
-                              Channel 4
-                            </MicIndicator>
-                          </VStack>
-                        </Flex>
-                      </AccordionPanel>
-                    </AccordionItem>
-                  </Accordion>
-                  
-
+                    <Accordion allowToggle flex='1' p='4' >
+                        <AccordionItem border='0' >
+                            <AccordionButton py='4' borderRadius='1em' bg='red.500' _hover={{ bg: "tomato", color: "tomato" }} _expanded={{ bg: "tomato", color: "white" }} >
+                              <Icon boxSize='5vh' color="white" pointerEvents='none' as={RiPictureInPictureFill} />
+                              <Heading flex="1" textAlign='center' color='white' fontSize="2xl" fontWeight="extrabold" >
+                                PiP Controls
+                              </Heading>
+                              <AccordionIcon />
+                            </AccordionButton>
+                        <AccordionPanel w='100%' >
+                          <Flex align="center" justify="center" >
+                            <VStack spacing='4' align="center" justify="center" w='100%' >
+                              <HStack spacing='4' align="center" justify="center" w='100%' >
+                                <MotionButton w='3.5em' onClick={() => changePipPosition('A')} > {/* setPipDirection('A')*/}
+                                  A
+                                </MotionButton>
+                                <MotionButton w='3.5em' onClick={() => changePipPosition('B')} >
+                                  B
+                                </MotionButton>
+                                <MotionButton w='3.5em' onClick={() => changePipPosition('Full')} >
+                                  Full
+                                </MotionButton>
+                              </HStack>
+                              <Zoom triggerOnce style={{width:'100%'}} duration={500} >
+                                <VStack w='100%'>
+                                  <IconButton icon={<CgArrowUpR />} size='lg' w='4em'  onClick={() => changePipPosition('None')} >
+                                    Up
+                                  </IconButton>
+                                  <HStack spacing='4em' w='100%' align="center" justify="center" >
+                                    <IconButton icon={<CgArrowLeftR />} size='lg' w='4em'  onClick={() => changePipPosition('None')} >
+                                      Left
+                                    </IconButton>
+                                    <IconButton icon={<CgArrowRightR />} size='lg' w='4em'  onClick={() => changePipPosition('None')} >
+                                      Right
+                                    </IconButton>
+                                  </HStack>
+                                  <IconButton icon={<CgArrowDownR />} size='lg' w='4em'  onClick={() => changePipPosition('None')} >
+                                    Down
+                                  </IconButton>
+                                </VStack>
+                              </Zoom>
+                            </VStack>
+                          </Flex>
+                        </AccordionPanel>
+                      </AccordionItem>
+                    </Accordion>
+                  </Flex>
 
                   <Divider w='95%' borderWidth={2} borderColor='gray.400' />
 
@@ -273,7 +450,7 @@ export default function Home() {
                   <Heading textAlign='center' pb="8" color='white' fontSize="4xl" fontWeight="extrabold" >
                     Atem Controls
                   </Heading>
-                  <Flex my={20} wrap='wrap' align="end" justify="start"
+                  <Flex ref={atemRef} my={20} wrap='wrap' align="end" justify="start"
                     borderRadius='1em'
                     boxShadow='0 10px 4px 5px #666, /*bottom external highlight*/
                                 0 -5px 4px 10px #4f4f4f, /*top external shadow*/ 
@@ -285,7 +462,7 @@ export default function Home() {
                           <AtemMic micEnabled={mic1Enabled} enableCallback={setMic1Enabled} volumeCallback={(value)=>setMic1Volume(limitVolume(mic1Volume + value))} >
                             MIC 1
                           </AtemMic>
-                          <AtemChannel pt="4" isLive={liveChannel==0} isPreview={previewChannel==0} previewOnClick={()=>setPreviewChannel(0)}
+                          <AtemChannel pt="4" tooltip='Cam 1' isLive={liveChannel==0} isPreview={previewChannel==0} previewOnClick={()=>setPreviewChannel(0)}
                             micEnabled={chan1Enabled} enableCallback={setChan1Enabled} volumeCallback={(value)=>setChan1Volume(limitVolume(chan1Volume + value))}
                           >
                             1
@@ -297,7 +474,7 @@ export default function Home() {
                           <AtemMic micEnabled={mic2Enabled} enableCallback={setMic2Enabled} volumeCallback={(value)=>setMic2Volume(limitVolume(mic2Volume + value))} >
                             MIC 2
                           </AtemMic>
-                          <AtemChannel pt="4" isLive={liveChannel==1} isPreview={previewChannel==1} previewOnClick={()=>setPreviewChannel(1)}
+                          <AtemChannel pt="4" tooltip='Unused' isLive={liveChannel==1} isPreview={previewChannel==1} previewOnClick={()=>setPreviewChannel(1)}
                             micEnabled={chan2Enabled} enableCallback={setChan2Enabled} volumeCallback={(value)=>setChan2Volume(limitVolume(chan2Volume + value))}
                           >
                             2
@@ -306,7 +483,7 @@ export default function Home() {
                       </Zoom>
                       <Zoom triggerOnce style={{alignSelf:'flex-end'}} >
                         <VStack p={4} >
-                          <AtemChannel pt="4" isLive={liveChannel==2} isPreview={previewChannel==2} previewOnClick={()=>setPreviewChannel(2)}
+                          <AtemChannel pt="4" tooltip='Presenter' isLive={liveChannel==2} isPreview={previewChannel==2} previewOnClick={()=>setPreviewChannel(2)}
                             micEnabled={chan3Enabled} enableCallback={setChan3Enabled} volumeCallback={(value)=>setChan3Volume(limitVolume(chan3Volume + value))}
                           >
                             3
@@ -315,7 +492,7 @@ export default function Home() {
                       </Zoom>
                       <Zoom triggerOnce style={{alignSelf:'flex-end'}} >
                         <VStack p={4} >
-                          <AtemChannel pt="4" isLive={liveChannel==3} isPreview={previewChannel==3} previewOnClick={()=>setPreviewChannel(3)}
+                          <AtemChannel pt="4" tooltip='Cam 2' isLive={liveChannel==3} isPreview={previewChannel==3} previewOnClick={()=>setPreviewChannel(3)}
                             micEnabled={chan4Enabled} enableCallback={setChan4Enabled} volumeCallback={(value)=>setChan4Volume(limitVolume(chan4Volume + value))}
                           >
                             4
@@ -327,7 +504,7 @@ export default function Home() {
                       <Zoom triggerOnce style={{alignSelf:'flex-end'}} >
                         <VStack p={4} >
                           <Flex align="center" justify="center" >
-                            <AtemPiP />
+                            <AtemPiP enabled={pipEnabled} enableCallback={setPipEnabled} />
                             <VStack ml="16" align="center" justify="center" >
                                 <AtemMiniButton highlight={chromaKeyEnabled} onClick={() => setChromaKeyEnabled(true)} >
                                     ON
@@ -343,6 +520,7 @@ export default function Home() {
                           <AtemBigButton mt="6" onClick={() => {
                             setPreviewChannel(liveChannel);
                             setLiveChannel(previewChannel);
+                            scrollToOBS();
                           }} >
                             AUTO
                           </AtemBigButton>
@@ -362,6 +540,13 @@ export default function Home() {
 }
 
 /*
+
+                  <Flex align='center' justify='center'>
+                    <Heading textAlign='center' m={4} color='white' fontSize="lg" fontWeight="semibold" >
+                      PiP
+                    </Heading>
+                    <Switch colorScheme='purple' size='md' />
+                </Flex>
 
                       <Heading textAlign='center' px={8} m={4} color='white' fontSize={breakpoint==='base'?'2xl':'6xl'} fontWeight="extrabold" >
                         Bla bla

@@ -3,7 +3,7 @@ import { Flex, VStack, Heading } from '@chakra-ui/react';
 import AtemMiniButton from './AtemMiniButton';
 import AtemPiPButton from './AtemPiPButton';
 
-export default memo(function AtemPiP({...props}) {
+export default memo(function AtemPiP({enabled, enableCallback, ...props}) {
     return (
         <VStack align="center" justify="center" {...props} >
             <Flex align="center" justify="center" >
@@ -16,10 +16,10 @@ export default memo(function AtemPiP({...props}) {
                     <AtemPiPButton right='0' bottom='0' />
                 </VStack>
                 <VStack align="center" justify="center" >
-                    <AtemMiniButton >
+                    <AtemMiniButton highlight={enabled} onClick={() => enableCallback(true)} >
                         ON
                     </AtemMiniButton>
-                    <AtemMiniButton >
+                    <AtemMiniButton highlight={!enabled} onClick={() => enableCallback(false)} >
                         OFF
                     </AtemMiniButton>
                 </VStack>
