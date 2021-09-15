@@ -26,6 +26,7 @@ import { BsCameraVideoFill } from "react-icons/bs";
 import { FaDesktop } from "react-icons/fa";
 import { RiRemoteControl2Line, RiPictureInPictureFill } from "react-icons/ri";
 import { AiFillAudio } from "react-icons/ai";
+import { ImShrink } from "react-icons/im";
 import { CgArrowUpR, CgArrowDownR, CgArrowLeftR, CgArrowRightR } from "react-icons/cg";
 
 const limitVolume = (value) => {
@@ -38,11 +39,14 @@ export default function Home() {
     const atemRef = useRef(null);
     // Canvas
     const obsImageRef = useRef(null);
+    const previewImageRef = useRef(null);
     const presenterImageRef = useRef(null);
     const cam1ImageRef = useRef(null);
     const obsCanvasRef = useRef(null);
+    const previewCanvasRef = useRef(null);
     const presenterCanvasRef = useRef(null);
     const [obsImageURL, setObsImageURL] = useState('images/cam1/1.png');
+    const [previewImageURL, setPreviewImageURL] = useState('images/cam2/1.png');
     const [presenterImageURL, setPresenterImageURL] = useState('images/worship/1.png');
     const [cam1ImageUrl, setCam1ImageUrl] = useState('images/cam1/1.png');
     const [cam2ImageUrl, setCam2ImageUrl] = useState('images/cam2/1.png');
@@ -63,7 +67,7 @@ export default function Home() {
     const [cropped, setCropped] = useState(true);
     const [chromaKeyEnabled, setChromaKeyEnabled] = useState(true);
     const [pipEnabled, setPipEnabled] = useState(true);
-    const [pipDirection, setPipDirection] = useState('B'); // A, B, Full, None
+    const [pipDirection, setPipDirection] = useState('B'); // A, B, Full // Up, Down, Left, Shrink, Right
     // Mics
     const [mic1Enabled, setMic1Enabled] = useState(false);
     const [mic1Volume, setMic1Volume] = useState(50);
@@ -85,7 +89,44 @@ export default function Home() {
       obsCanvasRef.current.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"});
     };
 
+    useEffect(() => {
+      const multiplier = 2.5;
+      const width = Math.round(window.screen.width / multiplier);
+      const height = Math.round(width * 9 / 16);
+      // OBS
+      const obsCanvas = obsCanvasRef.current;
+      obsCanvas.width = width; // 1280
+      obsCanvas.height = height; // 720
+      // Presenter
+      const previewCanvas = previewCanvasRef.current;
+      previewCanvas.width = width; // 1280
+      previewCanvas.height = height; // 720
+      // Presenter
+      const presenterCanvas = presenterCanvasRef.current;
+      presenterCanvas.width = width; // 1280
+      presenterCanvas.height = height; // 720
+
+      animCanvasXRef.current = width * 0.7;
+      animCanvasYRef.current = height * 0.7;
+      animCanvasWidthRef.current = width * 0.3;
+      animCanvasHeightRef.current = height * 0.3;
+      animCanvasXFinalRef.current = width * 0.7;
+      animCanvasYFinalRef.current = height * 0.7;
+      animCanvasWidthFinalRef.current = width * 0.3;
+      animCanvasHeightFinalRef.current = height * 0.3;
+    }, []);
+
     // Display functions
+    const displayPreview = () => {
+      const previewCanvas = previewCanvasRef.current;
+      const previewContext = previewCanvas.getContext('2d');
+      const previewImageElement = previewImageRef.current;
+      if (previewImageElement.complete) {
+        // Draw Preview Image
+        previewContext.drawImage(previewImageElement, 0, 0, previewCanvas.width, previewCanvas.height);
+      }
+    };
+
     const displayOBS = (startup=false) => {
       const obsCanvas = obsCanvasRef.current;
       const obsContext = obsCanvas.getContext('2d');
@@ -93,13 +134,12 @@ export default function Home() {
       if (obsImageElement.complete) {
         // Draw OBS Image
         obsContext.drawImage(obsImageElement, 0, 0, obsCanvas.width, obsCanvas.height);
-        const presenterImageElement = presenterImageRef.current;
         if(startup) {
-          presenterImageElement.onload = () => {
+          presenterImageRef.current.onload = () => {
             displayPresenter();
-            presenterImageElement.onload = () => {};
+            presenterImageRef.current.onload = () => {};
           };
-          if (presenterImageElement.complete) {
+          if (presenterImageRef.current.complete) {
             displayPresenter();
           }
         }
@@ -144,9 +184,6 @@ export default function Home() {
         const cam1ImageElement = cam1ImageRef.current;
         if (cam1ImageElement.complete) {
           // Draw Camera 1 as PiP
-          if (pipDirection == 'None') {
-            // Do nothing
-          }
           obsContext.drawImage(cam1ImageElement, 0, 0, cam1ImageElement.width, cam1ImageElement.height,
                             animCanvasXRef.current, animCanvasYRef.current, animCanvasWidthRef.current, animCanvasHeightRef.current);
         }
@@ -182,8 +219,26 @@ export default function Home() {
     useEffect(() => {
       displayOBS();
       displayPresenter();
-      scrollToOBS();
     }, [presenterImageURL, cam1ImageUrl, pipEnabled, pipDirection, chromaKeyEnabled, cropped]);
+
+    useEffect(() => {
+      scrollToOBS();
+    }, [presenterImageURL, cam1ImageUrl, liveChannel, pipEnabled, chromaKeyEnabled, cropped]);
+
+    useEffect(() => {
+      if (previewChannel == 0) {
+        setPreviewImageURL(cam1ImageUrl);
+      }
+      else if (previewChannel == 1) {
+        setPreviewImageURL('images/black.png');
+      }
+      else if (previewChannel == 2) {
+        setPreviewImageURL(presenterImageURL);
+      }
+      else if (previewChannel == 3) {
+        setPreviewImageURL(cam2ImageUrl);
+      }
+    }, [previewChannel, cam1ImageUrl, cam2ImageUrl, presenterImageURL]);
 
     useEffect(() => {
       if (liveChannel == 0) {
@@ -198,30 +253,7 @@ export default function Home() {
       else if (liveChannel == 3) {
         setObsImageURL(cam2ImageUrl);
       }
-    }, [liveChannel, cam1ImageUrl, presenterImageURL, cam2ImageUrl]);
-
-    useEffect(() => {
-      const multiplier = 2.5;
-      const width = Math.round(window.screen.width / multiplier);
-      const height = Math.round(width * 9 / 16);
-      // OBS
-      const obsCanvas = obsCanvasRef.current;
-      obsCanvas.width = width; // 1280
-      obsCanvas.height = height; // 720
-      // Presenter
-      const presenterCanvas = presenterCanvasRef.current;
-      presenterCanvas.width = width; // 1280
-      presenterCanvas.height = height; // 720
-
-      animCanvasXRef.current = width * 0.7;
-      animCanvasYRef.current = height * 0.7;
-      animCanvasWidthRef.current = width * 0.3;
-      animCanvasHeightRef.current = height * 0.3;
-      animCanvasXFinalRef.current = width * 0.7;
-      animCanvasYFinalRef.current = height * 0.7;
-      animCanvasWidthFinalRef.current = width * 0.3;
-      animCanvasHeightFinalRef.current = height * 0.3;
-    }, []);
+    }, [liveChannel, cam1ImageUrl, cam2ImageUrl, presenterImageURL]);
 
     const animatePiP = () => {
       if (animProgressRef.current < 1){
@@ -264,8 +296,32 @@ export default function Home() {
           w = cw;
           h = ch;
         }
-        else if (dir == 'None') {
+        else if (dir == 'Up') {
           x = animCanvasXRef.current;
+          y = -ch;
+          w = 0;
+          h = 0;
+        }
+        else if (dir == 'Down') {
+          x = animCanvasXRef.current;
+          y = 2 * ch;
+          w = 0;
+          h = 0;
+        }
+        else if (dir == 'Left') {
+          x = -cw;
+          y = animCanvasYRef.current;
+          w = 0;
+          h = 0;
+        }
+        else if (dir == 'Shrink') {
+          x = animCanvasXRef.current;
+          y = animCanvasYRef.current;
+          w = 0;
+          h = 0;
+        }
+        else if (dir == 'Right') {
+          x = 2 * cw;
           y = animCanvasYRef.current;
           w = 0;
           h = 0;
@@ -323,10 +379,13 @@ export default function Home() {
                   <MotionButton leftIcon={<MdContentCut />} onClick={() => setCropped(!cropped)} >
                     Transition to {cropped?'uncropped':'cropped'}
                   </MotionButton>
+
+                  {/* Canvas and Images */}
                   <HStack spacing='4' align="center" justify="center" >
                     <Box border='2px' borderColor='white' >
-                      <canvas ref={presenterCanvasRef} />
+                        <canvas ref={previewCanvasRef} />
                     </Box>
+                    <canvas ref={presenterCanvasRef} style={{display: 'none'}} />
                     <Box border='2px' borderColor='white' >
                       <canvas ref={obsCanvasRef} />
                     </Box>
@@ -337,6 +396,13 @@ export default function Home() {
                       displayPresenter();
                     }}
                     display='none' alt='obs' src={obsImageURL} />
+                  <ChakraImage ref={previewImageRef}
+                    onLoad={() => {
+                      //displayOBS(true);
+                      //displayPresenter();
+                      displayPreview();
+                    }}
+                    display='none' alt='obs' src={previewImageURL} />
                   <ChakraImage ref={presenterImageRef} display='none' alt='presenter' src={presenterImageURL} />
                   <ChakraImage ref={cam1ImageRef} display='none' alt='cam1' src={cam1ImageUrl} />
 
@@ -403,18 +469,19 @@ export default function Home() {
                               </HStack>
                               <Zoom triggerOnce style={{width:'100%'}} duration={500} >
                                 <VStack w='100%'>
-                                  <IconButton icon={<CgArrowUpR />} size='lg' w='4em'  onClick={() => changePipPosition('None')} >
+                                  <IconButton icon={<CgArrowUpR />} size='lg' w='4em'  onClick={() => changePipPosition('Up')} >
                                     Up
                                   </IconButton>
-                                  <HStack spacing='4em' w='100%' align="center" justify="center" >
-                                    <IconButton icon={<CgArrowLeftR />} size='lg' w='4em'  onClick={() => changePipPosition('None')} >
+                                  <HStack w='100%' align="center" justify="center" >
+                                    <IconButton icon={<CgArrowLeftR />} size='lg' w='4em'  onClick={() => changePipPosition('Left')} >
                                       Left
                                     </IconButton>
-                                    <IconButton icon={<CgArrowRightR />} size='lg' w='4em'  onClick={() => changePipPosition('None')} >
+                                    <IconButton icon={<ImShrink />} size='lg' w='4em'  onClick={() => changePipPosition('Shrink')} />
+                                    <IconButton icon={<CgArrowRightR />} size='lg' w='4em'  onClick={() => changePipPosition('Right')} >
                                       Right
                                     </IconButton>
                                   </HStack>
-                                  <IconButton icon={<CgArrowDownR />} size='lg' w='4em'  onClick={() => changePipPosition('None')} >
+                                  <IconButton icon={<CgArrowDownR />} size='lg' w='4em'  onClick={() => changePipPosition('Down')} >
                                     Down
                                   </IconButton>
                                 </VStack>
@@ -502,7 +569,6 @@ export default function Home() {
                           <AtemBigButton mt="6" onClick={() => {
                             setPreviewChannel(liveChannel);
                             setLiveChannel(previewChannel);
-                            scrollToOBS();
                           }} >
                             AUTO
                           </AtemBigButton>
