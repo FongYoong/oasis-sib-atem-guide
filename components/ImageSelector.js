@@ -12,14 +12,14 @@ ModalCloseButton
 import { MotionButton, MotionImage } from './MotionElements';
 import { FaRegCheckCircle } from 'react-icons/fa';
 
-export default memo(function ImageSelector({children, buttonIcon, data, onClick}) {
+export default memo(function ImageSelector({children, buttonIcon, buttonColor, data, onClick}) {
     const modalState = useDisclosure();
     const [selectedCategory, setSelectedCategory] = useState(Object.keys(data)[0]);
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
     return (
         <>
-        <MotionButton leftIcon={buttonIcon} onClick={modalState.onOpen} >
+        <MotionButton leftIcon={buttonIcon} colorScheme={buttonColor} onClick={modalState.onOpen} >
             {children}
         </MotionButton>
         <Modal size='full' isOpen={modalState.isOpen} onClose={modalState.onClose}>

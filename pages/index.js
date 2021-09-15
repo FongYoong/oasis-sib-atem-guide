@@ -9,6 +9,16 @@ AccordionItem,
 AccordionButton,
 AccordionPanel,
 AccordionIcon,
+Menu,
+MenuButton,
+MenuList,
+MenuItem,
+MenuItemOption,
+MenuGroup,
+MenuOptionGroup,
+MenuIcon,
+MenuCommand,
+MenuDivider,
 } from "@chakra-ui/react";
 import Navbar from '../components/Navbar';
 import NavbarSpace from '../components/NavbarSpace';
@@ -25,7 +35,7 @@ import { MdContentCut } from "react-icons/md";
 import { BsCameraVideoFill } from "react-icons/bs";
 import { FaDesktop } from "react-icons/fa";
 import { RiRemoteControl2Line, RiPictureInPictureFill } from "react-icons/ri";
-import { AiFillAudio } from "react-icons/ai";
+import { AiFillAudio, AiOutlineCaretDown } from "react-icons/ai";
 import { ImShrink } from "react-icons/im";
 import { CgArrowUpR, CgArrowDownR, CgArrowLeftR, CgArrowRightR } from "react-icons/cg";
 
@@ -345,6 +355,8 @@ export default function Home() {
             <main>
               <Navbar />
               <Button leftIcon={<RiRemoteControl2Line />} position='fixed' zIndex='1000' m='8' bottom='0' right='0'
+                _hover={{ bg: "gray.400" }}
+                _focus={{ boxShadow: "outline" }}
                 onClick={() => atemRef.current.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"})}
               >
                 Go to Atem
@@ -355,30 +367,55 @@ export default function Home() {
                   <Heading textAlign='center' m={4} color='white' fontSize="4xl" fontWeight="extrabold" >
                     Display
                   </Heading>
-                  <ImageSelector data={presenterImages} buttonIcon={<FaDesktop />}
-                    onClick={(category, imageUrl) => {
-                      setPresenterImageURL(imageUrl);
-                    }}
-                  >
-                    Slides
-                  </ImageSelector>
-                  <ImageSelector data={cam1Images} buttonIcon={<BsCameraVideoFill />}
-                    onClick={(category, imageUrl) => {
-                      setCam1ImageUrl(imageUrl);
-                    }}
-                  >
-                    Camera 1
-                  </ImageSelector>
-                  <ImageSelector data={cam2Images} buttonIcon={<BsCameraVideoFill />}
-                    onClick={(category, imageUrl) => {
-                      setCam2ImageUrl(imageUrl);
-                    }}
-                  >
-                    Camera 2
-                  </ImageSelector>
-                  <MotionButton leftIcon={<MdContentCut />} onClick={() => setCropped(!cropped)} >
-                    Transition to {cropped?'uncropped':'cropped'}
-                  </MotionButton>
+                  <HStack spacing='4' wrap='wrap' align="center" justify="center" >
+                    <ImageSelector buttonColor='pink' data={cam1Images} buttonIcon={<BsCameraVideoFill />}
+                      onClick={(category, imageUrl) => {
+                        setCam1ImageUrl(imageUrl);
+                      }}
+                    >
+                      Camera 1
+                    </ImageSelector>
+                    <ImageSelector buttonColor='pink' data={cam2Images} buttonIcon={<BsCameraVideoFill />}
+                      onClick={(category, imageUrl) => {
+                        setCam2ImageUrl(imageUrl);
+                      }}
+                    >
+                      Camera 2
+                    </ImageSelector>
+                    <ImageSelector buttonColor='green' data={presenterImages} buttonIcon={<FaDesktop />}
+                      onClick={(category, imageUrl) => {
+                        setPresenterImageURL(imageUrl);
+                      }}
+                    >
+                      Slides
+                    </ImageSelector>
+                  </HStack>
+                  <HStack spacing='4' wrap='wrap' align="center" justify="center" >
+                    <Menu isLazy >
+                      <MenuButton as={Button} colorScheme="purple" rightIcon={<AiOutlineCaretDown />}
+                        _hover={{ bg: "purple.700" }}
+                        _expanded={{ bg: "purple.700" }}
+                        _focus={{ boxShadow: "outline" }}
+                      >
+                        Macros
+                      </MenuButton>
+                      <MenuList>
+                        <MenuItem onClick={() => {
+                          setLiveChannel(2);
+                          setPipEnabled(true);
+                          setChromaKeyEnabled(false);
+                          changePipPosition('B');
+                        }} >Announcements</MenuItem>
+                        <MenuItem onClick={() => {
+                          setChromaKeyEnabled(true);
+                          setPipEnabled(false);
+                        }} >GreenScreenFull</MenuItem>
+                      </MenuList>
+                    </Menu>
+                    <MotionButton colorScheme='yellow' leftIcon={<MdContentCut />} onClick={() => setCropped(!cropped)} >
+                      Transition to {cropped?'uncropped':'cropped'}
+                    </MotionButton>
+                  </HStack>
 
                   {/* Canvas and Images */}
                   <HStack spacing='4' align="center" justify="center" >
@@ -398,8 +435,6 @@ export default function Home() {
                     display='none' alt='obs' src={obsImageURL} />
                   <ChakraImage ref={previewImageRef}
                     onLoad={() => {
-                      //displayOBS(true);
-                      //displayPresenter();
                       displayPreview();
                     }}
                     display='none' alt='obs' src={previewImageURL} />
