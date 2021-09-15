@@ -14,7 +14,7 @@ import { GrCheckboxSelected } from 'react-icons/gr';
 
 export default memo(function ImageSelector({children, data, onClick}) {
     const modalState = useDisclosure();
-    const [selectedCategory, setSelectedCategory] = useState(Object.keys(data)[1]);
+    const [selectedCategory, setSelectedCategory] = useState(Object.keys(data)[0]);
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
     return (
@@ -37,7 +37,7 @@ export default memo(function ImageSelector({children, data, onClick}) {
                     <TabPanels>
                         {Object.keys(data).map((category) => 
                             <TabPanel key={category} >
-                                <Flex mt={5} wrap='wrap' align='start' justify='start' >
+                                <Flex wrap='wrap' align='start' justify='start' >
                                     {data[category].map((imageUrl, key) => {
                                         const selected = selectedCategory==category && selectedImageIndex==key;
                                         return (

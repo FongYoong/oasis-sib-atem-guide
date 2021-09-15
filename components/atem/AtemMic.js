@@ -2,23 +2,23 @@ import { memo } from 'react';
 import { Flex, VStack, Heading } from '@chakra-ui/react';
 import AtemMiniButton from './AtemMiniButton';
 
-export default memo(function AtemMic({children, ...props}) {
+export default memo(function AtemMic({children, micEnabled, enableCallback, volumeCallback, ...props}) {
     return (
         <VStack align="center" justify="center" >
             <Flex align="center" justify="center" {...props} >
                 <VStack align="center" justify="center" >
-                    <AtemMiniButton >
+                    <AtemMiniButton highlight={micEnabled} onClick={() => enableCallback(true)} >
                         ON
                     </AtemMiniButton>
-                    <AtemMiniButton >
+                    <AtemMiniButton onClick={() => volumeCallback(5)} >
                         ᐃ
                     </AtemMiniButton>
                 </VStack>
                 <VStack align="center" justify="center" >
-                    <AtemMiniButton >
+                    <AtemMiniButton highlight={!micEnabled} onClick={() => enableCallback(false)} >
                         OFF
                     </AtemMiniButton>
-                    <AtemMiniButton >
+                    <AtemMiniButton onClick={() => volumeCallback(-5)} >
                         ᐁ
                     </AtemMiniButton>
                 </VStack>

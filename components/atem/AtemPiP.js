@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Flex, VStack, Heading, Box } from '@chakra-ui/react';
+import { Flex, VStack, Heading } from '@chakra-ui/react';
 import AtemMiniButton from './AtemMiniButton';
 import AtemPiPButton from './AtemPiPButton';
 
