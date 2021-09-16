@@ -174,22 +174,13 @@ export default function Home() {
       }
     };
 
-    const displayOBS = (startup=false) => {
+    const displayOBS = () => {
       const obsCanvas = obsCanvasRef.current;
       const obsContext = obsCanvas.getContext('2d');
       const obsImageElement = obsImageRef.current;
       if (obsImageElement.complete) {
         // Draw OBS Image
         obsContext.drawImage(obsImageElement, 0, 0, obsCanvas.width, obsCanvas.height);
-        if(startup) {
-          presenterImageRef.current.onload = () => {
-            displayPresenter();
-            presenterImageRef.current.onload = () => {};
-          };
-          if (presenterImageRef.current.complete) {
-            displayPresenter();
-          }
-        }
       }
     };
 
@@ -266,11 +257,11 @@ export default function Home() {
     useEffect(() => {
       displayOBS();
       displayPresenter();
-    }, [presenterImageURL, cam1ImageUrl, pipEnabled, pipDirection, chromaKeyEnabled, cropped]);
+    }, [presenterImageURL, obsImageURL, pipEnabled, pipDirection, chromaKeyEnabled, cropped]);
 
     useEffect(() => {
       scrollToOBS();
-    }, [presenterImageURL, cam1ImageUrl, liveChannel, pipEnabled, chromaKeyEnabled, cropped]);
+    }, [presenterImageURL, obsImageURL, liveChannel, pipEnabled, chromaKeyEnabled, cropped]);
 
     useEffect(() => {
       if (previewChannel == 0) {
@@ -394,7 +385,7 @@ export default function Home() {
                 {resumeTutorial &&
                   <Slide direction='right' duration='500' triggerOnce >
                     <Button colorScheme='whatsapp' leftIcon={<GrResume />} 
-                      _hover={{ bg: "green.600" }}
+                      _hover={{ bg: "green.400" }}
                       _focus={{ boxShadow: "outline" }}
                       boxShadow="0 0px 12px 0 rgba(0, 196, 170, 1)"
                       onClick={() => {
@@ -409,7 +400,7 @@ export default function Home() {
                 <Slide direction='right' duration='500' triggerOnce >
                   <Menu isLazy placement='top' >
                     <MenuButton as={Button} leftIcon={<RiQuestionLine />} colorScheme="messenger" rightIcon={<AiOutlineCaretUp />}
-                      _hover={{ bg: "blue.700" }}
+                      _hover={{ bg: "blue.400" }}
                       _expanded={{ bg: "blue.700" }}
                     >
                       FAQ
@@ -424,7 +415,7 @@ export default function Home() {
                   </Menu>
                   <Menu isLazy >
                     <MenuButton as={Button} leftIcon={<GrWaypoint />} colorScheme="purple" rightIcon={<AiOutlineCaretUp />}
-                      _hover={{ bg: "purple.700" }}
+                      _hover={{ bg: "purple.400" }}
                       _expanded={{ bg: "purple.700" }}
                     >
                       Guide
@@ -465,8 +456,8 @@ export default function Home() {
                       </MenuGroup>
                     </MenuList>
                   </Menu>
-                  <Button leftIcon={<RiRemoteControl2Line />} 
-                    _hover={{ bg: "gray.400" }}
+                  <Button colorScheme="orange" leftIcon={<RiRemoteControl2Line />} 
+                    _hover={{ bg: "orange.400" }}
                     _focus={{ boxShadow: "outline" }}
                     boxShadow="0 0px 12px 0 rgba(0, 196, 170, 1)"
                     onClick={() => atemRef.current.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"})}
@@ -486,21 +477,21 @@ export default function Home() {
                   </Heading>
                   <HStack spacing='4' wrap='wrap' align="center" justify="center" >
                     <ImageSelector buttonClassName='cam1-slides' buttonColor='pink' data={cam1Images} buttonIcon={<BsCameraVideoFill />}
-                      onClick={(category, imageUrl) => {
+                      updateCallback={(imageUrl) => {
                         setCam1ImageUrl(imageUrl);
                       }}
                     >
                       Camera 1
                     </ImageSelector>
                     <ImageSelector buttonClassName='cam2-slides' buttonColor='pink' data={cam2Images} buttonIcon={<BsCameraVideoFill />}
-                      onClick={(category, imageUrl) => {
+                      updateCallback={(imageUrl) => {
                         setCam2ImageUrl(imageUrl);
                       }}
                     >
                       Camera 2
                     </ImageSelector>
                     <ImageSelector buttonClassName='presenter-slides' buttonColor='green' data={presenterImages} buttonIcon={<FaDesktop />}
-                      onClick={(category, imageUrl) => {
+                      updateCallback={(imageUrl) => {
                         setPresenterImageURL(imageUrl);
                       }}
                     >
@@ -511,8 +502,8 @@ export default function Home() {
                   <HStack spacing='4' wrap='wrap' align="center" justify="center" >
                     <Menu isLazy >
                       <MenuButton className='macros-menu' as={Button} colorScheme="purple" rightIcon={<AiOutlineCaretDown />}
-                        _hover={{ bg: "purple.700" }}
-                        _expanded={{ bg: "purple.700" }}
+                        _hover={{ bg: "purple.400" }}
+                        _expanded={{ bg: "purple.400" }}
                         _focus={{ boxShadow: "outline" }}
                       >
                         Macros
@@ -547,7 +538,7 @@ export default function Home() {
                   </HStack>
                   <ChakraImage ref={obsImageRef}
                     onLoad={() => {
-                      displayOBS(true);
+                      displayOBS();
                       displayPresenter();
                     }}
                     display='none' alt='obs' src={obsImageURL} />
@@ -556,7 +547,12 @@ export default function Home() {
                       displayPreview();
                     }}
                     display='none' alt='obs' src={previewImageURL} />
-                  <ChakraImage ref={presenterImageRef} display='none' alt='presenter' src={presenterImageURL} />
+                  <ChakraImage ref={presenterImageRef}
+                    onLoad={() => {
+                      displayOBS();
+                      displayPresenter();
+                    }}
+                    display='none' alt='presenter' src={presenterImageURL} />
                   <ChakraImage ref={cam1ImageRef} display='none' alt='cam1' src={cam1ImageUrl} />
 
                   {/* Mic controls */}

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, memo } from 'react';
 import { Zoom } from "react-awesome-reveal";
-import { useDisclosure, ScaleFade, Box, Flex, Button, Tabs, TabList, TabPanels, Tab, TabPanel, Icon, Image as ChakraImage,
+import { useDisclosure, Box, Flex, Button, IconButton, ButtonGroup, Tabs, TabList, TabPanels, Tab, TabPanel, Icon, Image as ChakraImage,
 Modal,
 ModalOverlay,
 ModalContent,
@@ -9,13 +9,15 @@ ModalFooter,
 ModalBody,
 ModalCloseButton
 } from '@chakra-ui/react';
+import Loading from './Loading';
 import { MotionButton, MotionImage } from './MotionElements';
 import { FaRegCheckCircle } from 'react-icons/fa';
+import { FiPlusCircle, FiMinusCircle } from 'react-icons/fi';
 
-function vh(v) {
+/* function vh(v) {
   var h = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
   return (v * h) / 100;
-}
+} */
 
 function vw(v) {
   var w = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
@@ -23,8 +25,9 @@ function vw(v) {
 }
 
 
-export default memo(function ImageSelector({children, buttonClassName, buttonIcon, buttonColor, data, onClick}) {
+export default memo(function ImageSelector({children, buttonClassName, buttonIcon, buttonColor, data, updateCallback}) {
     const modalState = useDisclosure();
+    const [selectedCategoryIndex, setSelectedCategoryIndex] = useState(0);
     const [selectedCategory, setSelectedCategory] = useState(Object.keys(data)[0]);
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
@@ -32,7 +35,31 @@ export default memo(function ImageSelector({children, buttonClassName, buttonIco
     const hoverImageRef = useRef(null);
     const [hoverShow, setHoverShow] = useState(false);
     const hoverShowRef = useRef(false);
-    const [hoverImageURL, setHoverImageURL] = useState(data[selectedCategory][selectedImageIndex]);
+    const [hoverImageURL, setHoverImageURL] = useState(data[Object.keys(data)[0]][0]);
+
+    const changeIndex = (change) => {
+        const nextIndex = selectedImageIndex + change;
+        if (data[selectedCategory][nextIndex]) {
+            setSelectedImageIndex(nextIndex);
+        }
+        else {
+            const nextCategoryIndex = selectedCategoryIndex + change;
+            let nextCategory = Object.keys(data)[nextCategoryIndex];
+            if (nextCategory) {
+                //alert('next category')
+                setSelectedCategoryIndex(nextCategoryIndex);
+                setSelectedCategory(nextCategory);
+            }
+            else {
+                //alert('overflow category')
+                const newIndex = change > 0 ? 0 : (Object.keys(data).length - 1);
+                nextCategory = Object.keys(data)[newIndex];
+                setSelectedCategoryIndex(newIndex);
+                setSelectedCategory(nextCategory);
+            }
+            setSelectedImageIndex(change > 0 ? 0 : (data[nextCategory].length - 1));
+        }
+    }
 
     const updateHoverImagePos = (event) => {
         if (hoverImageRef.current) {
@@ -42,34 +69,71 @@ export default memo(function ImageSelector({children, buttonClassName, buttonIco
     };
 
     useEffect(() => {
-     // Button Hover
-      document.addEventListener('mousemove', (event) => {
-          if (hoverShowRef.current) {
-            updateHoverImagePos(event);
-          }
-      });
+        // Button Hover
+        document.addEventListener('mousemove', (event) => {
+            if (hoverShowRef.current) {
+                updateHoverImagePos(event);
+            }
+        });
+        // Restore from localStorage
+        const categIndex = localStorage.getItem(children + 'selectedCategoryIndex');
+        const categ = localStorage.getItem(children + 'selectedCategory');
+        const imgIndex = localStorage.getItem(children + 'selectedImageIndex');
+
+        if (categIndex !== null) {
+            setSelectedCategoryIndex(categIndex);
+        }
+        if (categ !== null) {
+            setSelectedCategory(categ);
+        }
+        if (imgIndex !== null) {
+            setSelectedImageIndex(imgIndex);
+        }
+        if (categ !== null && imgIndex !== null) {
+            setHoverImageURL(data[categ][imgIndex]);
+        }
     }, []);
+
+    useEffect(() => {
+        updateCallback(hoverImageURL);
+    }, [hoverImageURL]);
+
+    useEffect(() => {
+        localStorage.setItem(children + 'selectedCategoryIndex', selectedCategoryIndex);
+        localStorage.setItem(children + 'selectedCategory', selectedCategory);
+        localStorage.setItem(children + 'selectedImageIndex',  selectedImageIndex);
+        setHoverImageURL(data[selectedCategory][selectedImageIndex]);
+    }, [selectedCategoryIndex, selectedCategory, selectedImageIndex]);
+
 
     return (
         <>
-        <ChakraImage ref={hoverImageRef} w='20vw' position='fixed' pointerEvents='none' zIndex='1000' alt='selector-button-hover' src={hoverImageURL}
+        <ChakraImage ref={hoverImageRef}
+            w='20vw' position='fixed' pointerEvents='none' zIndex='1000' alt='selector-button-hover' src={hoverImageURL}
             opacity={hoverShow? 1 : 0} transition='opacity 0.5s'  border='2px' borderColor='white' boxShadow="0 0px 24px 0 rgba(0, 196, 170, 1)"
         />
-        <MotionButton className={buttonClassName} leftIcon={buttonIcon} colorScheme={buttonColor}
-            onMouseEnter={(event) => {
-                updateHoverImagePos(event);
-                hoverShowRef.current = true;
-                setHoverShow(true);
-                setHoverImageURL(data[selectedCategory][selectedImageIndex]);
-            }}
-            onMouseLeave={() => {
-                hoverShowRef.current = false;
-                setHoverShow(false);
-            }}
-            onClick={modalState.onOpen}
-        >
-            {children}
-        </MotionButton>
+        <ButtonGroup isAttached py='2'>
+            <IconButton aria-label="Minus" variant='outlined' icon={<FiMinusCircle color='white' />}
+                onClick={() => changeIndex(-1)}
+            />
+            <MotionButton className={buttonClassName} leftIcon={buttonIcon} colorScheme={buttonColor}
+                onMouseEnter={(event) => {
+                    updateHoverImagePos(event);
+                    hoverShowRef.current = true;
+                    setHoverShow(true);
+                }}
+                onMouseLeave={() => {
+                    hoverShowRef.current = false;
+                    setHoverShow(false);
+                }}
+                onClick={modalState.onOpen}
+            >
+                {children}
+            </MotionButton>
+            <IconButton aria-label="Add" variant='outlined' icon={<FiPlusCircle color='white' />}
+                onClick={() => changeIndex(1)}
+            />
+        </ButtonGroup>
         <Modal size='full' isOpen={modalState.isOpen} onClose={modalState.onClose}>
             <ModalOverlay />
             <ModalContent>
@@ -83,24 +147,26 @@ export default memo(function ImageSelector({children, buttonClassName, buttonIco
                         )}
                     </TabList>
                     <TabPanels>
-                        {Object.keys(data).map((category) => 
+                        {Object.keys(data).map((category, categoryIndex) => 
                             <TabPanel key={category} >
                                 <Flex wrap='wrap' align='start' justify='start' >
                                     {data[category].map((imageUrl, key) => {
                                         const selected = selectedCategory==category && selectedImageIndex==key;
                                         return (
                                             <Zoom key={key} delay={key * 100} duration='300'>
-                                                <Box position='relative' >
+                                                <Box position='relative' overflow='hidden' >
                                                     <MotionImage
+                                                        //fallback={<Loading w="25vw" />}
+                                                        fallbackSrc=''
                                                         filter={selected ? 'contrast(50%)' : ''}
                                                         m='4' opacity='0.85' borderColor='#fcbe03' borderRadius='0' border='2px'
                                                         whileHover={{ scale: 1.05, opacity:1, borderRadius:'1em', boxShadow:"10px 10px 0 rgba(0, 0, 0, 0.2)" } }
                                                         whileTap={{ scale: 0.9 }}
-                                                        w='25vw' fit='cover' alt='obs' src={imageUrl}
+                                                        w="25vw" fit='cover' alt='' src={imageUrl}
                                                         onClick={() => {
+                                                            setSelectedCategoryIndex(categoryIndex);
                                                             setSelectedCategory(category);
                                                             setSelectedImageIndex(key);
-                                                            onClick(category, imageUrl);
                                                             modalState.onClose();
                                                         }}
                                                     />
@@ -128,11 +194,3 @@ export default memo(function ImageSelector({children, buttonClassName, buttonIco
         </>
     )
 });
-/*
-      <Image
-        boxSize="200px"
-        fit="cover"
-        src="https://resizing.flixster.com/wTgvsiM8vNLhCcCH-6ovV8n5z5U=/300x300/v1.bjsyMDkxMzI5O2o7MTgyMDQ7MTIwMDsxMjAwOzkwMA"
-      />
-*/
-// textShadow="0px 0px 3px red"
