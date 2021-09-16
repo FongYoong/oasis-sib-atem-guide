@@ -1,9 +1,18 @@
 import Head from 'next/head';
+import dynamic from 'next/dynamic';
 //import { useRouter } from 'next/router';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Zoom } from "react-awesome-reveal";
+import { Zoom, Slide } from "react-awesome-reveal";
 import { MotionButton } from '../components/MotionElements';
-import { useBreakpointValue, useDisclosure, Image as ChakraImage, Button, HStack, Box, Divider, Heading, Flex, VStack, Icon, IconButton, Switch,
+import { TUT_FAQ_CHANGE_SLIDE,
+TUT_CHURCH_VISION, TUT_PRE_SERVICE, TUT_WORSHIP, TUT_ANNOUNCEMENTS, TUT_RECORDED_SERMON, TUT_LIVE_SERMON, TUT_WORSHIP_AGAIN, TUT_OUTRO
+} from '../lib/tutorial_steps';
+import { ACTIONS, EVENTS, STATUS } from "react-joyride";
+const Joyride = dynamic(
+  () => import('react-joyride'),
+  { ssr: false }
+);
+import { Image as ChakraImage, Button, HStack, Box, Divider, Heading, Flex, VStack, Icon, IconButton,
 Accordion,
 AccordionItem,
 AccordionButton,
@@ -13,12 +22,7 @@ Menu,
 MenuButton,
 MenuList,
 MenuItem,
-MenuItemOption,
-MenuGroup,
-MenuOptionGroup,
-MenuIcon,
-MenuCommand,
-MenuDivider,
+MenuGroup
 } from "@chakra-ui/react";
 import Navbar from '../components/Navbar';
 import NavbarSpace from '../components/NavbarSpace';
@@ -34,9 +38,10 @@ import {cam1Images, cam2Images} from '../lib/camData';
 import { MdContentCut } from "react-icons/md";
 import { BsCameraVideoFill } from "react-icons/bs";
 import { FaDesktop } from "react-icons/fa";
-import { RiRemoteControl2Line, RiPictureInPictureFill } from "react-icons/ri";
-import { AiFillAudio, AiOutlineCaretDown } from "react-icons/ai";
+import { RiRemoteControl2Line, RiPictureInPictureFill, RiQuestionLine } from "react-icons/ri";
+import { AiFillAudio, AiOutlineCaretDown, AiOutlineCaretUp } from "react-icons/ai";
 import { ImShrink } from "react-icons/im";
+import { GrResume, GrWaypoint } from "react-icons/gr";
 import { CgArrowUpR, CgArrowDownR, CgArrowLeftR, CgArrowRightR } from "react-icons/cg";
 
 const limitVolume = (value) => {
@@ -60,24 +65,24 @@ export default function Home() {
     const [presenterImageURL, setPresenterImageURL] = useState('images/worship/1.png');
     const [cam1ImageUrl, setCam1ImageUrl] = useState('images/cam1/1.png');
     const [cam2ImageUrl, setCam2ImageUrl] = useState('images/cam2/1.png');
-    // Progress
+    // Intermediate Animation State
     const animRequestRef = useRef(null);
     const animProgressRef = useRef(0);
     const animCanvasXRef = useRef(0); 
     const animCanvasYRef = useRef(0);
     const animCanvasWidthRef = useRef(0);
     const animCanvasHeightRef = useRef(0);
-    // Final
+    // Final Animation State
     const animCanvasXFinalRef = useRef(0);
     const animCanvasYFinalRef = useRef(0);
     const animCanvasWidthFinalRef = useRef(0);
     const animCanvasHeightFinalRef = useRef(0);
-
     // States
     const [cropped, setCropped] = useState(true);
     const [chromaKeyEnabled, setChromaKeyEnabled] = useState(true);
-    const [pipEnabled, setPipEnabled] = useState(true);
+    const [pipEnabled, setPipEnabled] = useState(false);
     const [pipDirection, setPipDirection] = useState('B'); // A, B, Full // Up, Down, Left, Shrink, Right
+    const [pipAccordionOpen, setPipAccordionOpen] = useState(false);
     // Mics
     const [mic1Enabled, setMic1Enabled] = useState(false);
     const [mic1Volume, setMic1Volume] = useState(50);
@@ -95,11 +100,43 @@ export default function Home() {
     const [liveChannel, setLiveChannel] = useState(0);
     const [previewChannel, setPreviewChannel] = useState(3);
 
+    // Joyride Tour
+    const [tutorialType, setTutorialType] = useState(TUT_CHURCH_VISION);
+    const [tutorialStep, setTutorialStep] = useState(0);
+    const [runTutorial, setRunTutorial] = useState(false);
+    const [resumeTutorial, setResumeTutorial] = useState(false);
+    const openTutorial = (steps) => {
+        setTutorialStep(0);
+        setTutorialType(steps);
+        setRunTutorial(true);
+        setResumeTutorial(false);
+    };
+    const joyrideCallback = (state) => {
+        // action, index, status, type or (event)
+        if ([EVENTS.STEP_AFTER, EVENTS.TARGET_NOT_FOUND].includes(state.type)) {
+          if (state.action === ACTIONS.NEXT) {
+            setTutorialStep(Math.max(0, tutorialStep + 1));
+          }
+          else if (state.action === ACTIONS.PREV) {
+            setTutorialStep(Math.max(0, tutorialStep - 1));
+          }
+          else if (state.action === ACTIONS.CLOSE) {
+            setRunTutorial(false);
+            setResumeTutorial(true);
+          }
+        }
+        else if ([STATUS.FINISHED, STATUS.SKIPPED, STATUS.ERROR].includes(state.status) || [ACTIONS.RESET].includes(state.action)) {
+          setRunTutorial(false);
+          setTutorialStep(0);
+        }
+    };
+
     const scrollToOBS = () => {
       obsCanvasRef.current.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"});
     };
 
     useEffect(() => {
+      // Canvas
       const multiplier = 2.5;
       const width = Math.round(window.screen.width / multiplier);
       const height = Math.round(width * 9 / 16);
@@ -267,7 +304,6 @@ export default function Home() {
 
     const animatePiP = () => {
       if (animProgressRef.current < 1){
-        console.log(animProgressRef.current);
         const animProgress = animProgressRef.current;
         animCanvasXRef.current = animCanvasXRef.current + animProgress * (animCanvasXFinalRef.current - animCanvasXRef.current);
         animCanvasYRef.current = animCanvasYRef.current + animProgress * (animCanvasYFinalRef.current - animCanvasYRef.current);
@@ -353,14 +389,95 @@ export default function Home() {
                 <title>Oasis SIB Atem Guide - Home</title>
             </Head>
             <main>
+              {/* Floating buttons */}
+              <VStack position='fixed' zIndex='1000' m='8' bottom='0' right='0'>
+                {resumeTutorial &&
+                  <Slide direction='right' duration='500' triggerOnce >
+                    <Button colorScheme='whatsapp' leftIcon={<GrResume />} 
+                      _hover={{ bg: "green.600" }}
+                      _focus={{ boxShadow: "outline" }}
+                      boxShadow="0 0px 12px 0 rgba(0, 196, 170, 1)"
+                      onClick={() => {
+                        setRunTutorial(true);
+                        setResumeTutorial(false);
+                      }}
+                    >
+                      Resume
+                    </Button>
+                  </Slide>
+                }
+                <Slide direction='right' duration='500' triggerOnce >
+                  <Menu isLazy placement='top' >
+                    <MenuButton as={Button} leftIcon={<RiQuestionLine />} colorScheme="messenger" rightIcon={<AiOutlineCaretUp />}
+                      _hover={{ bg: "blue.700" }}
+                      _expanded={{ bg: "blue.700" }}
+                    >
+                      FAQ
+                    </MenuButton>
+                    <MenuList>
+                      <MenuGroup title="FAQ">
+                        <MenuItem onClick={() => {
+                          openTutorial(TUT_FAQ_CHANGE_SLIDE);
+                        }} >Changing Powerpoints</MenuItem>
+                      </MenuGroup>
+                    </MenuList>
+                  </Menu>
+                  <Menu isLazy >
+                    <MenuButton as={Button} leftIcon={<GrWaypoint />} colorScheme="purple" rightIcon={<AiOutlineCaretUp />}
+                      _hover={{ bg: "purple.700" }}
+                      _expanded={{ bg: "purple.700" }}
+                    >
+                      Guide
+                    </MenuButton>
+                    <MenuList>
+                      <MenuGroup title="Guides">
+                        <MenuItem onClick={() => {
+                          openTutorial(TUT_CHURCH_VISION);
+                        }} >Church Vision</MenuItem>
+                        <MenuItem onClick={() => {
+                          openTutorial(TUT_PRE_SERVICE);
+                        }} >Pre-Service Prayer</MenuItem>
+                        <MenuItem onClick={() => {
+                          openTutorial(TUT_WORSHIP);
+                        }} >Worship</MenuItem>
+                        <MenuItem onClick={() => {
+                          openTutorial(TUT_ANNOUNCEMENTS);
+                        }} >Announcements</MenuItem>
+                        <MenuItem onClick={() => {
+                          openTutorial(TUT_RECORDED_SERMON);
+                          setPipAccordionOpen(true);
+                        }} >Recorded Sermon</MenuItem>
+                        <MenuItem onClick={() => {
+                          openTutorial(TUT_LIVE_SERMON);
+                          setPipAccordionOpen(true);
+                        }} >Live Sermon</MenuItem>
+                        <MenuItem onClick={() => {
+                          openTutorial(TUT_WORSHIP_AGAIN);
+                          setPipAccordionOpen(true);
+                        }} >Worship Again</MenuItem>
+                        <MenuItem onClick={() => {
+                          openTutorial(TUT_OUTRO);
+                          //setLiveChannel(2);
+                          //setPipEnabled(true);
+                          //setChromaKeyEnabled(false);
+                          //changePipPosition('B');
+                        }} >Visitor&apos;s Outro Video</MenuItem>
+                      </MenuGroup>
+                    </MenuList>
+                  </Menu>
+                  <Button leftIcon={<RiRemoteControl2Line />} 
+                    _hover={{ bg: "gray.400" }}
+                    _focus={{ boxShadow: "outline" }}
+                    boxShadow="0 0px 12px 0 rgba(0, 196, 170, 1)"
+                    onClick={() => atemRef.current.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"})}
+                  >
+                    Go to Atem
+                  </Button>
+                </Slide>
+              </VStack>
+
+              {/* Page start */}
               <Navbar />
-              <Button leftIcon={<RiRemoteControl2Line />} position='fixed' zIndex='1000' m='8' bottom='0' right='0'
-                _hover={{ bg: "gray.400" }}
-                _focus={{ boxShadow: "outline" }}
-                onClick={() => atemRef.current.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"})}
-              >
-                Go to Atem
-              </Button>
               <VStack>
                 <NavbarSpace />
                 <VStack spacing={4} w="100%" h='100%' align="center" justify="center">
@@ -368,21 +485,21 @@ export default function Home() {
                     Display
                   </Heading>
                   <HStack spacing='4' wrap='wrap' align="center" justify="center" >
-                    <ImageSelector buttonColor='pink' data={cam1Images} buttonIcon={<BsCameraVideoFill />}
+                    <ImageSelector buttonClassName='cam1-slides' buttonColor='pink' data={cam1Images} buttonIcon={<BsCameraVideoFill />}
                       onClick={(category, imageUrl) => {
                         setCam1ImageUrl(imageUrl);
                       }}
                     >
                       Camera 1
                     </ImageSelector>
-                    <ImageSelector buttonColor='pink' data={cam2Images} buttonIcon={<BsCameraVideoFill />}
+                    <ImageSelector buttonClassName='cam2-slides' buttonColor='pink' data={cam2Images} buttonIcon={<BsCameraVideoFill />}
                       onClick={(category, imageUrl) => {
                         setCam2ImageUrl(imageUrl);
                       }}
                     >
                       Camera 2
                     </ImageSelector>
-                    <ImageSelector buttonColor='green' data={presenterImages} buttonIcon={<FaDesktop />}
+                    <ImageSelector buttonClassName='presenter-slides' buttonColor='green' data={presenterImages} buttonIcon={<FaDesktop />}
                       onClick={(category, imageUrl) => {
                         setPresenterImageURL(imageUrl);
                       }}
@@ -390,9 +507,10 @@ export default function Home() {
                       Slides
                     </ImageSelector>
                   </HStack>
+                  
                   <HStack spacing='4' wrap='wrap' align="center" justify="center" >
                     <Menu isLazy >
-                      <MenuButton as={Button} colorScheme="purple" rightIcon={<AiOutlineCaretDown />}
+                      <MenuButton className='macros-menu' as={Button} colorScheme="purple" rightIcon={<AiOutlineCaretDown />}
                         _hover={{ bg: "purple.700" }}
                         _expanded={{ bg: "purple.700" }}
                         _focus={{ boxShadow: "outline" }}
@@ -420,11 +538,11 @@ export default function Home() {
                   {/* Canvas and Images */}
                   <HStack spacing='4' align="center" justify="center" >
                     <Box border='2px' borderColor='white' >
-                        <canvas ref={previewCanvasRef} />
+                        <canvas className='preview-canvas' ref={previewCanvasRef} />
                     </Box>
                     <canvas ref={presenterCanvasRef} style={{display: 'none'}} />
                     <Box border='2px' borderColor='white' >
-                      <canvas ref={obsCanvasRef} />
+                      <canvas className='obs-canvas' ref={obsCanvasRef} />
                     </Box>
                   </HStack>
                   <ChakraImage ref={obsImageRef}
@@ -479,7 +597,7 @@ export default function Home() {
                       </AccordionItem>
                     </Accordion>
                   
-                    <Accordion allowToggle flex='1' p='4' >
+                    <Accordion className='pip-controls' flex='1' p='4' allowToggle index={[pipAccordionOpen?0:-1]} onChange={() => setPipAccordionOpen(!pipAccordionOpen)} >
                         <AccordionItem border='0' >
                             <AccordionButton py='4' borderRadius='1em' bg='red.500' _hover={{ bg: "tomato", color: "tomato" }} _expanded={{ bg: "tomato", color: "white" }} >
                               <Icon boxSize='5vh' color="white" pointerEvents='none' as={RiPictureInPictureFill} />
@@ -492,18 +610,18 @@ export default function Home() {
                           <Flex align="center" justify="center" >
                             <VStack spacing='4' align="center" justify="center" w='100%' >
                               <HStack spacing='4' align="center" justify="center" w='100%' >
-                                <MotionButton w='3.5em' onClick={() => changePipPosition('A')} > {/* setPipDirection('A')*/}
+                                <MotionButton className='pip-controls-A' w='3.5em' onClick={() => changePipPosition('A')} > {/* setPipDirection('A')*/}
                                   A
                                 </MotionButton>
-                                <MotionButton w='3.5em' onClick={() => changePipPosition('B')} >
+                                <MotionButton className='pip-controls-B' w='3.5em' onClick={() => changePipPosition('B')} >
                                   B
                                 </MotionButton>
-                                <MotionButton w='3.5em' onClick={() => changePipPosition('Full')} >
+                                <MotionButton className='pip-controls-full' w='3.5em' onClick={() => changePipPosition('Full')} >
                                   Full
                                 </MotionButton>
                               </HStack>
                               <Zoom triggerOnce style={{width:'100%'}} duration={500} >
-                                <VStack w='100%'>
+                                <VStack className='pip-controls-hide' w='100%'>
                                   <IconButton icon={<CgArrowUpR />} size='lg' w='4em'  onClick={() => changePipPosition('Up')} >
                                     Up
                                   </IconButton>
@@ -543,10 +661,11 @@ export default function Home() {
                     <Flex wrap='wrap' align="end" justify="start" >
                       <Zoom triggerOnce style={{alignSelf:'flex-end'}} >
                         <VStack p={4} >
-                          <AtemMic micEnabled={mic1Enabled} enableCallback={setMic1Enabled} volumeCallback={(value)=>setMic1Volume(limitVolume(mic1Volume + value))} >
+                          <AtemMic className="atem-mic1" micEnabled={mic1Enabled} enableCallback={setMic1Enabled} volumeCallback={(value)=>setMic1Volume(limitVolume(mic1Volume + value))} >
                             MIC 1
                           </AtemMic>
-                          <AtemChannel pt="4" tooltip='Cam 1' isLive={liveChannel==0} isPreview={previewChannel==0} previewOnClick={()=>setPreviewChannel(0)}
+                          <AtemChannel micClassName="atem-micChan1" bigButtonClassName="atem-chan1"
+                            pt="4" tooltip='Cam 1' isLive={liveChannel==0} isPreview={previewChannel==0} previewOnClick={()=>setPreviewChannel(0)}
                             micEnabled={chan1Enabled} enableCallback={setChan1Enabled} volumeCallback={(value)=>setChan1Volume(limitVolume(chan1Volume + value))}
                           >
                             1
@@ -558,7 +677,8 @@ export default function Home() {
                           <AtemMic micEnabled={mic2Enabled} enableCallback={setMic2Enabled} volumeCallback={(value)=>setMic2Volume(limitVolume(mic2Volume + value))} >
                             MIC 2
                           </AtemMic>
-                          <AtemChannel pt="4" tooltip='Unused' isLive={liveChannel==1} isPreview={previewChannel==1} previewOnClick={()=>setPreviewChannel(1)}
+                          <AtemChannel micClassName="atem-micChan2" bigButtonClassName="atem-chan2"
+                            pt="4" tooltip='Unused' isLive={liveChannel==1} isPreview={previewChannel==1} previewOnClick={()=>setPreviewChannel(1)}
                             micEnabled={chan2Enabled} enableCallback={setChan2Enabled} volumeCallback={(value)=>setChan2Volume(limitVolume(chan2Volume + value))}
                           >
                             2
@@ -567,7 +687,8 @@ export default function Home() {
                       </Zoom>
                       <Zoom triggerOnce style={{alignSelf:'flex-end'}} >
                         <VStack p={4} >
-                          <AtemChannel pt="4" tooltip='Presenter' isLive={liveChannel==2} isPreview={previewChannel==2} previewOnClick={()=>setPreviewChannel(2)}
+                          <AtemChannel micClassName="atem-micChan3" bigButtonClassName="atem-chan3"
+                            pt="4" tooltip='Presenter' isLive={liveChannel==2} isPreview={previewChannel==2} previewOnClick={()=>setPreviewChannel(2)}
                             micEnabled={chan3Enabled} enableCallback={setChan3Enabled} volumeCallback={(value)=>setChan3Volume(limitVolume(chan3Volume + value))}
                           >
                             3
@@ -576,7 +697,8 @@ export default function Home() {
                       </Zoom>
                       <Zoom triggerOnce style={{alignSelf:'flex-end'}} >
                         <VStack p={4} >
-                          <AtemChannel pt="4" tooltip='Cam 2' isLive={liveChannel==3} isPreview={previewChannel==3} previewOnClick={()=>setPreviewChannel(3)}
+                          <AtemChannel micClassName="atem-micChan4" bigButtonClassName="atem-chan4"
+                            pt="4" tooltip='Cam 2' isLive={liveChannel==3} isPreview={previewChannel==3} previewOnClick={()=>setPreviewChannel(3)}
                             micEnabled={chan4Enabled} enableCallback={setChan4Enabled} volumeCallback={(value)=>setChan4Volume(limitVolume(chan4Volume + value))}
                           >
                             4
@@ -590,10 +712,10 @@ export default function Home() {
                           <Flex align="center" justify="center" >
                             <AtemPiP enabled={pipEnabled} enableCallback={setPipEnabled} />
                             <VStack ml="16" align="center" justify="center" >
-                                <AtemMiniButton highlight={chromaKeyEnabled} onClick={() => setChromaKeyEnabled(true)} >
+                                <AtemMiniButton className='atem-chroma-key-on' highlight={chromaKeyEnabled} onClick={() => setChromaKeyEnabled(true)} >
                                     ON
                                 </AtemMiniButton>
-                                <AtemMiniButton highlight={!chromaKeyEnabled} onClick={() => setChromaKeyEnabled(false)} >
+                                <AtemMiniButton className='atem-chroma-key-off' highlight={!chromaKeyEnabled} onClick={() => setChromaKeyEnabled(false)} >
                                     OFF
                                 </AtemMiniButton>
                                 <Heading textAlign='center' px={8} m={4} color='white' fontSize="md" fontWeight="bold" >
@@ -601,7 +723,7 @@ export default function Home() {
                                 </Heading>
                             </VStack>
                           </Flex>
-                          <AtemBigButton mt="6" onClick={() => {
+                          <AtemBigButton className="atem-auto" mt="6" onClick={() => {
                             setPreviewChannel(liveChannel);
                             setLiveChannel(previewChannel);
                           }} >
@@ -613,7 +735,22 @@ export default function Home() {
                   </Flex>
 
                 </VStack>
+                <Joyride
+                  scrollToFirstStep
+                  scrollOffset={100}
+                  run={runTutorial}
+                  stepIndex={tutorialStep}
+                  steps={tutorialType}
+                  continuous={true}
+                  showProgress={true}
+                  showSkipButton={true}
+                      locale={{
+                      last: "End Guide",
+                  }}
+                  callback={joyrideCallback}
+                />
               </VStack>
+
             </main>
             <footer>
 

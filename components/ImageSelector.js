@@ -1,6 +1,6 @@
-import { useState, memo } from 'react';
+import { useState, useRef, useEffect, memo } from 'react';
 import { Zoom } from "react-awesome-reveal";
-import { useDisclosure, Box, Flex, Button, Tabs, TabList, TabPanels, Tab, TabPanel, Icon,
+import { useDisclosure, ScaleFade, Box, Flex, Button, Tabs, TabList, TabPanels, Tab, TabPanel, Icon, Image as ChakraImage,
 Modal,
 ModalOverlay,
 ModalContent,
@@ -12,14 +12,62 @@ ModalCloseButton
 import { MotionButton, MotionImage } from './MotionElements';
 import { FaRegCheckCircle } from 'react-icons/fa';
 
-export default memo(function ImageSelector({children, buttonIcon, buttonColor, data, onClick}) {
+function vh(v) {
+  var h = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
+  return (v * h) / 100;
+}
+
+function vw(v) {
+  var w = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
+  return (v * w) / 100;
+}
+
+
+export default memo(function ImageSelector({children, buttonClassName, buttonIcon, buttonColor, data, onClick}) {
     const modalState = useDisclosure();
     const [selectedCategory, setSelectedCategory] = useState(Object.keys(data)[0]);
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
+    // Button Hover
+    const hoverImageRef = useRef(null);
+    const [hoverShow, setHoverShow] = useState(false);
+    const hoverShowRef = useRef(false);
+    const [hoverImageURL, setHoverImageURL] = useState(data[selectedCategory][selectedImageIndex]);
+
+    const updateHoverImagePos = (event) => {
+        if (hoverImageRef.current) {
+            hoverImageRef.current.style.left = event.clientX - vw(10) + 'px';
+            hoverImageRef.current.style.top = event.clientY + vw(2) + 'px';
+        }
+    };
+
+    useEffect(() => {
+     // Button Hover
+      document.addEventListener('mousemove', (event) => {
+          if (hoverShowRef.current) {
+            updateHoverImagePos(event);
+          }
+      });
+    }, []);
+
     return (
         <>
-        <MotionButton leftIcon={buttonIcon} colorScheme={buttonColor} onClick={modalState.onOpen} >
+        <ChakraImage ref={hoverImageRef} w='20vw' position='fixed' pointerEvents='none' zIndex='1000' alt='selector-button-hover' src={hoverImageURL}
+            opacity={hoverShow? 1 : 0} transition='opacity 0.5s'  border='2px' borderColor='white' boxShadow="0 0px 24px 0 rgba(0, 196, 170, 1)"
+        />
+        <MotionButton className={buttonClassName} leftIcon={buttonIcon} colorScheme={buttonColor}
+            onMouseEnter={(event) => {
+                updateHoverImagePos(event);
+                hoverShowRef.current = true;
+                setHoverShow(true);
+                setHoverImageURL(data[selectedCategory][selectedImageIndex]);
+            }}
+            onMouseLeave={() => {
+                hoverShowRef.current = false;
+                setHoverShow(false);
+            }}
+            onClick={modalState.onOpen}
+        >
             {children}
         </MotionButton>
         <Modal size='full' isOpen={modalState.isOpen} onClose={modalState.onClose}>
@@ -29,7 +77,7 @@ export default memo(function ImageSelector({children, buttonIcon, buttonColor, d
             <ModalCloseButton />
             <ModalBody>
                 <Tabs isLazy defaultIndex={Object.keys(data).indexOf(selectedCategory)}  >
-                    <TabList>
+                    <TabList overflowX='auto' overflowY= 'hidden' >
                         {Object.keys(data).map((category) => 
                             <Tab key={category} >{category}</Tab> 
                         )}
