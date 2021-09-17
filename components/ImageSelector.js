@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, memo } from 'react';
-import { Zoom } from "react-awesome-reveal";
+import { Zoom, Slide } from "react-awesome-reveal";
 import { useDisclosure, Box, Flex, Button, IconButton, ButtonGroup, Tabs, TabList, TabPanels, Tab, TabPanel, Icon, Image as ChakraImage,
 Modal,
 ModalOverlay,
@@ -9,7 +9,6 @@ ModalFooter,
 ModalBody,
 ModalCloseButton
 } from '@chakra-ui/react';
-import Loading from './Loading';
 import { MotionButton, MotionImage } from './MotionElements';
 import { FaRegCheckCircle } from 'react-icons/fa';
 import { FiPlusCircle, FiMinusCircle } from 'react-icons/fi';
@@ -34,7 +33,8 @@ export default memo(function ImageSelector({children, buttonClassName, buttonIco
     // Button Hover
     const hoverImageRef = useRef(null);
     const [hoverShow, setHoverShow] = useState(false);
-    const hoverShowRef = useRef(false);
+    const hoverShowRef = useRef(null);
+    hoverShowRef.current = hoverShow;
     const [hoverImageURL, setHoverImageURL] = useState(data[Object.keys(data)[0]][0]);
 
     const changeIndex = (change) => {
@@ -81,13 +81,13 @@ export default memo(function ImageSelector({children, buttonClassName, buttonIco
         const imgIndex = localStorage.getItem(children + 'selectedImageIndex');
 
         if (categIndex !== null) {
-            setSelectedCategoryIndex(categIndex);
+            setSelectedCategoryIndex(parseInt(categIndex));
         }
         if (categ !== null) {
             setSelectedCategory(categ);
         }
         if (imgIndex !== null) {
-            setSelectedImageIndex(imgIndex);
+            setSelectedImageIndex(parseInt(imgIndex));
         }
         if (categ !== null && imgIndex !== null) {
             setHoverImageURL(data[categ][imgIndex]);
@@ -109,30 +109,32 @@ export default memo(function ImageSelector({children, buttonClassName, buttonIco
     return (
         <>
         <ChakraImage ref={hoverImageRef}
-            w='20vw' position='fixed' pointerEvents='none' zIndex='1000' alt='selector-button-hover' src={hoverImageURL}
+            w='20vw' position='fixed' pointerEvents='none' zIndex='500' alt='selector-button-hover' src={hoverImageURL}
             opacity={hoverShow? 1 : 0} transition='opacity 0.5s'  border='2px' borderColor='white' boxShadow="0 0px 24px 0 rgba(0, 196, 170, 1)"
         />
         <ButtonGroup isAttached py='2'>
-            <IconButton aria-label="Minus" variant='outlined' icon={<FiMinusCircle color='white' />}
-                onClick={() => changeIndex(-1)}
-            />
+            <Slide direction='left' duration='300'>
+                <IconButton aria-label="Minus" variant='outlined' icon={<FiMinusCircle color='white' />}
+                    onClick={() => changeIndex(-1)}
+                />
+            </Slide>
             <MotionButton className={buttonClassName} leftIcon={buttonIcon} colorScheme={buttonColor}
                 onMouseEnter={(event) => {
                     updateHoverImagePos(event);
-                    hoverShowRef.current = true;
                     setHoverShow(true);
                 }}
                 onMouseLeave={() => {
-                    hoverShowRef.current = false;
                     setHoverShow(false);
                 }}
                 onClick={modalState.onOpen}
             >
                 {children}
             </MotionButton>
-            <IconButton aria-label="Add" variant='outlined' icon={<FiPlusCircle color='white' />}
-                onClick={() => changeIndex(1)}
-            />
+            <Slide direction='right' duration='300'>
+                <IconButton aria-label="Add" variant='outlined' icon={<FiPlusCircle color='white' />}
+                    onClick={() => changeIndex(1)}
+                />
+            </Slide>
         </ButtonGroup>
         <Modal size='full' isOpen={modalState.isOpen} onClose={modalState.onClose}>
             <ModalOverlay />
@@ -160,7 +162,7 @@ export default memo(function ImageSelector({children, buttonClassName, buttonIco
                                                         fallbackSrc=''
                                                         filter={selected ? 'contrast(50%)' : ''}
                                                         m='4' opacity='0.85' borderColor='#fcbe03' borderRadius='0' border='2px'
-                                                        whileHover={{ scale: 1.05, opacity:1, borderRadius:'1em', boxShadow:"10px 10px 0 rgba(0, 0, 0, 0.2)" } }
+                                                        whileHover={{ scale: 1.05, opacity:1, borderRadius:'1em', boxShadow:"10px 10px 0 rgba(115, 255, 224)" } }
                                                         whileTap={{ scale: 0.9 }}
                                                         w="25vw" fit='cover' alt='' src={imageUrl}
                                                         onClick={() => {

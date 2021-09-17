@@ -2,9 +2,9 @@ import Head from 'next/head';
 import dynamic from 'next/dynamic';
 //import { useRouter } from 'next/router';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Zoom, Slide } from "react-awesome-reveal";
-import { MotionButton } from '../components/MotionElements';
-import { TUT_FAQ_CHANGE_SLIDE,
+import { Zoom, Fade, Slide } from "react-awesome-reveal";
+import { MotionButton, MotionBox } from '../components/MotionElements';
+import { TUT_FAQ_CHANGE_SLIDE, TUT_FAQ_TOUR,
 TUT_CHURCH_VISION, TUT_PRE_SERVICE, TUT_WORSHIP, TUT_ANNOUNCEMENTS, TUT_RECORDED_SERMON, TUT_LIVE_SERMON, TUT_WORSHIP_AGAIN, TUT_OUTRO
 } from '../lib/tutorial_steps';
 import { ACTIONS, EVENTS, STATUS } from "react-joyride";
@@ -12,7 +12,7 @@ const Joyride = dynamic(
   () => import('react-joyride'),
   { ssr: false }
 );
-import { Image as ChakraImage, Button, HStack, Box, Divider, Heading, Flex, VStack, Icon, IconButton,
+import { useBreakpointValue, Image as ChakraImage, Button, HStack, Box, Divider, Heading, Flex, VStack, Icon, IconButton,
 Accordion,
 AccordionItem,
 AccordionButton,
@@ -43,6 +43,7 @@ import { AiFillAudio, AiOutlineCaretDown, AiOutlineCaretUp } from "react-icons/a
 import { ImShrink } from "react-icons/im";
 import { GrResume, GrWaypoint } from "react-icons/gr";
 import { CgArrowUpR, CgArrowDownR, CgArrowLeftR, CgArrowRightR } from "react-icons/cg";
+import { IoCheckmarkCircleOutline, IoCloseCircleOutline } from "react-icons/io5";
 
 const limitVolume = (value) => {
   return Math.min(Math.max(value, 0), 100);
@@ -50,8 +51,12 @@ const limitVolume = (value) => {
 
 export default function Home() {
     //const router = useRouter();
-    //const breakpoint = useBreakpointValue({ base: "base", md: "md", lg: "lg" });
+    const breakpoint = useBreakpointValue({ base: "mobile", xs: "mobile", sm: "mobile", md: "tablet", lg: "lg" });
     const atemRef = useRef(null);
+    const [localStorageEnable, setLocalStorageEnable] = useState(false);
+    const [obsScrollEnable, setObsScrollEnable] = useState(false);
+    const obsScrollEnableRef = useRef(null);
+    obsScrollEnableRef.current = obsScrollEnable;
     // Canvas
     const obsImageRef = useRef(null);
     const previewImageRef = useRef(null);
@@ -79,8 +84,17 @@ export default function Home() {
     const animCanvasHeightFinalRef = useRef(0);
     // States
     const [cropped, setCropped] = useState(true);
-    const [chromaKeyEnabled, setChromaKeyEnabled] = useState(true);
+    const croppedRef = useRef(null);
+    croppedRef.current = cropped;
+
+    const [chromaKeyEnabled, setChromaKeyEnabled] = useState(false);
+    const chromaKeyEnabledRef = useRef(null);
+    chromaKeyEnabledRef.current = chromaKeyEnabled;
+
     const [pipEnabled, setPipEnabled] = useState(false);
+    const pipEnabledRef = useRef(null);
+    pipEnabledRef.current = pipEnabled;
+
     const [pipDirection, setPipDirection] = useState('B'); // A, B, Full // Up, Down, Left, Shrink, Right
     const [pipAccordionOpen, setPipAccordionOpen] = useState(false);
     // Mics
@@ -131,13 +145,9 @@ export default function Home() {
         }
     };
 
-    const scrollToOBS = () => {
-      obsCanvasRef.current.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"});
-    };
-
     useEffect(() => {
       // Canvas
-      const multiplier = 2.5;
+      const multiplier = breakpoint === 'mobile' ? 1.1 : 2.5;
       const width = Math.round(window.screen.width / multiplier);
       const height = Math.round(width * 9 / 16);
       // OBS
@@ -153,17 +163,84 @@ export default function Home() {
       presenterCanvas.width = width; // 1280
       presenterCanvas.height = height; // 720
 
-      animCanvasXRef.current = width * 0.7;
-      animCanvasYRef.current = height * 0.7;
-      animCanvasWidthRef.current = width * 0.3;
-      animCanvasHeightRef.current = height * 0.3;
-      animCanvasXFinalRef.current = width * 0.7;
-      animCanvasYFinalRef.current = height * 0.7;
-      animCanvasWidthFinalRef.current = width * 0.3;
-      animCanvasHeightFinalRef.current = height * 0.3;
-    }, []);
+      // Restore from localStorage
+      let atemConfig = localStorage.getItem('atemConfig');
+      if (atemConfig !== null) {
+        atemConfig = JSON.parse(atemConfig);
+        if ("obsScrollEnable" in atemConfig) {
+          setTimeout(() => {
+            // Set auto scroll after 1 second startup
+            setObsScrollEnable(atemConfig.obsScrollEnable);
+          }, 1000);
+        }
+        if ("liveChannel" in atemConfig) {
+          setLiveChannel(atemConfig.liveChannel);
+        }
+        if ("previewChannel" in atemConfig) {
+          setPreviewChannel(atemConfig.previewChannel);
+        }
+        if ("pipEnabled" in atemConfig) {
+          setPipEnabled(atemConfig.pipEnabled);
+        }
+        if ("pipDirection" in atemConfig) {
+          changePipPosition(atemConfig.pipDirection);
+        }
+        if ("chromaKeyEnabled" in atemConfig) {
+          setChromaKeyEnabled(atemConfig.chromaKeyEnabled);
+        }
+        if ("cropped" in atemConfig) {
+          setCropped(atemConfig.cropped);
+        }
+        if ("mic1Enabled" in atemConfig) {
+          setMic1Enabled(atemConfig.mic1Enabled);
+        }
+        if ("mic1Volume" in atemConfig) {
+          setMic1Volume(atemConfig.mic1Volume);
+        }
+        if ("chan1Enabled" in atemConfig) {
+          setChan1Enabled(atemConfig.chan1Enabled);
+        }
+        if ("chan1Volume" in atemConfig) {
+          setChan1Volume(atemConfig.chan1Volume);
+        }
+        if ("chan3Enabled" in atemConfig) {
+          setChan3Enabled(atemConfig.chan3Enabled);
+        }
+        if ("chan3Volume" in atemConfig) {
+          setChan3Volume(atemConfig.chan3Volume);
+        }
+        if ("chan4Enabled" in atemConfig) {
+          setChan4Enabled(atemConfig.chan4Enabled);
+        }
+        if ("chan4Volume" in atemConfig) {
+          setChan4Volume(atemConfig.chan4Volume);
+        }
+      }
+      else {
+        setTimeout(() => {
+          // Enable auto scroll by default after 1 second startup
+          setObsScrollEnable(true);
+        }, 1000);
+        // Initial PiP current position if no config
+        animCanvasXRef.current = width * 0.7;
+        animCanvasYRef.current = height * 0.7;
+        animCanvasWidthRef.current = width * 0.3;
+        animCanvasHeightRef.current = height * 0.3;
+        animCanvasXFinalRef.current = width * 0.7;
+        animCanvasYFinalRef.current = height * 0.7;
+        animCanvasWidthFinalRef.current = width * 0.3;
+        animCanvasHeightFinalRef.current = height * 0.3;
+      }
+      setLocalStorageEnable(true);
+    }, [breakpoint]);
 
-    // Display functions
+    const scrollToOBS = () => {
+      if (obsScrollEnableRef.current) {
+        obsCanvasRef.current.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"});
+      }
+    };
+
+    // Display canvas functions
     const displayPreview = () => {
       const previewCanvas = previewCanvasRef.current;
       const previewContext = previewCanvas.getContext('2d');
@@ -195,7 +272,7 @@ export default function Home() {
       // Draw presenter image
       presenterContext.drawImage(presenterImageElement, 0, 0, presenterCanvas.width, presenterCanvas.height);
       // Green screen effect
-      if (chromaKeyEnabled) {
+      if (chromaKeyEnabledRef.current) {
         const obsImage = obsContext.getImageData(0, 0, obsCanvas.width, obsCanvas.height);
         const obsImageData = obsImage.data;
         const presenterImage = presenterContext.getImageData(0, 0, presenterCanvas.width, presenterCanvas.height);
@@ -218,7 +295,7 @@ export default function Home() {
         // Set image data
         obsContext.putImageData(obsImage, 0, 0);
       }
-      if (pipEnabled) {
+      if (pipEnabledRef.current) {
         const cam1ImageElement = cam1ImageRef.current;
         if (cam1ImageElement.complete) {
           // Draw Camera 1 as PiP
@@ -226,7 +303,7 @@ export default function Home() {
                             animCanvasXRef.current, animCanvasYRef.current, animCanvasWidthRef.current, animCanvasHeightRef.current);
         }
       }
-      if (!cropped) {
+      if (!croppedRef.current) {
         const width = obsCanvas.width;
         const height = obsCanvas.height;
         // Draw cropped version
@@ -293,6 +370,17 @@ export default function Home() {
       }
     }, [liveChannel, cam1ImageUrl, cam2ImageUrl, presenterImageURL]);
 
+    useEffect(() => {
+      if (localStorageEnable) {
+        const atemConfig = { obsScrollEnable, liveChannel, previewChannel, pipEnabled, pipDirection, chromaKeyEnabled, cropped,
+          mic1Enabled, mic1Volume, chan1Enabled, chan1Volume, chan3Enabled, chan3Volume, chan4Enabled, chan4Volume
+        };
+        localStorage.setItem('atemConfig', JSON.stringify(atemConfig));
+      }
+    }, [obsScrollEnable, liveChannel, previewChannel, pipEnabled, pipDirection, chromaKeyEnabled, cropped,
+      mic1Enabled, mic1Volume, chan1Enabled, chan1Volume, chan3Enabled, chan3Volume, chan4Enabled, chan4Volume
+    ]);
+
     const animatePiP = () => {
       if (animProgressRef.current < 1){
         const animProgress = animProgressRef.current;
@@ -311,68 +399,66 @@ export default function Home() {
     }
 
     const changePipPosition = (dir) => {
-      if (dir != pipDirection) {
-        const cw = obsCanvasRef.current.width;
-        const ch = obsCanvasRef.current.height;
-        let x, y, w, h;
-        if (dir == 'A') {
-          x = 0;
-          y = ch * 0.7;
-          w = cw * 0.3;
-          h = ch * 0.3;
-        }
-        else if (dir == 'B') {
-          x = cw * 0.7;
-          y = ch * 0.7;
-          w = cw * 0.3;
-          h = ch * 0.3;
-        }
-        else if (dir == 'Full') {
-          x = 0;
-          y = 0;
-          w = cw;
-          h = ch;
-        }
-        else if (dir == 'Up') {
-          x = animCanvasXRef.current;
-          y = -ch;
-          w = 0;
-          h = 0;
-        }
-        else if (dir == 'Down') {
-          x = animCanvasXRef.current;
-          y = 2 * ch;
-          w = 0;
-          h = 0;
-        }
-        else if (dir == 'Left') {
-          x = -cw;
-          y = animCanvasYRef.current;
-          w = 0;
-          h = 0;
-        }
-        else if (dir == 'Shrink') {
-          x = animCanvasXRef.current;
-          y = animCanvasYRef.current;
-          w = 0;
-          h = 0;
-        }
-        else if (dir == 'Right') {
-          x = 2 * cw;
-          y = animCanvasYRef.current;
-          w = 0;
-          h = 0;
-        }
-        animCanvasXFinalRef.current = x;
-        animCanvasYFinalRef.current = y;
-        animCanvasWidthFinalRef.current = w;
-        animCanvasHeightFinalRef.current = h;
-        animProgressRef.current = 0;
-        cancelAnimationFrame(animRequestRef.current);
-        animRequestRef.current = requestAnimationFrame(animatePiP);
+      const cw = obsCanvasRef.current.width;
+      const ch = obsCanvasRef.current.height;
+      let x, y, w, h;
+      if (dir == 'A') {
+        x = 0;
+        y = ch * 0.7;
+        w = cw * 0.3;
+        h = ch * 0.3;
       }
+      else if (dir == 'B') {
+        x = cw * 0.7;
+        y = ch * 0.7;
+        w = cw * 0.3;
+        h = ch * 0.3;
+      }
+      else if (dir == 'Full') {
+        x = 0;
+        y = 0;
+        w = cw;
+        h = ch;
+      }
+      else if (dir == 'Up') {
+        x = animCanvasXRef.current;
+        y = -ch;
+        w = 0;
+        h = 0;
+      }
+      else if (dir == 'Down') {
+        x = animCanvasXRef.current;
+        y = 2 * ch;
+        w = 0;
+        h = 0;
+      }
+      else if (dir == 'Left') {
+        x = -cw;
+        y = animCanvasYRef.current;
+        w = 0;
+        h = 0;
+      }
+      else if (dir == 'Shrink') {
+        x = animCanvasXRef.current;
+        y = animCanvasYRef.current;
+        w = 0;
+        h = 0;
+      }
+      else if (dir == 'Right') {
+        x = 2 * cw;
+        y = animCanvasYRef.current;
+        w = 0;
+        h = 0;
+      }
+      animCanvasXFinalRef.current = x;
+      animCanvasYFinalRef.current = y;
+      animCanvasWidthFinalRef.current = w;
+      animCanvasHeightFinalRef.current = h;
+      animProgressRef.current = 0;
+      cancelAnimationFrame(animRequestRef.current);
+      animRequestRef.current = requestAnimationFrame(animatePiP);
       setPipDirection(dir);
-    };
+    }
 
     return (
         <div>
@@ -381,7 +467,26 @@ export default function Home() {
             </Head>
             <main>
               {/* Floating buttons */}
-              <VStack position='fixed' zIndex='1000' m='8' bottom='0' right='0'>
+              <VStack align='flex-start' justify='center' position='fixed' zIndex='500' m='4' bottom='0' right='0'>
+                <Joyride
+                  scrollToFirstStep
+                  scrollOffset={100}
+                  run={runTutorial}
+                  stepIndex={tutorialStep}
+                  steps={tutorialType}
+                  continuous={true}
+                  showProgress={true}
+                  showSkipButton={true}
+                      locale={{
+                      last: "End Guide",
+                  }}
+                  styles={{
+                    options: {
+                      zIndex: 1000
+                    },
+                  }}
+                  callback={joyrideCallback}
+                />
                 {resumeTutorial &&
                   <Slide direction='right' duration='500' triggerOnce >
                     <Button colorScheme='whatsapp' leftIcon={<GrResume />} 
@@ -408,6 +513,10 @@ export default function Home() {
                     <MenuList>
                       <MenuGroup title="FAQ">
                         <MenuItem onClick={() => {
+                          openTutorial(TUT_FAQ_TOUR);
+                          setPipAccordionOpen(true);
+                        }} >A Tour of Everything</MenuItem>
+                        <MenuItem onClick={() => {
                           openTutorial(TUT_FAQ_CHANGE_SLIDE);
                         }} >Changing Powerpoints</MenuItem>
                       </MenuGroup>
@@ -433,6 +542,7 @@ export default function Home() {
                         }} >Worship</MenuItem>
                         <MenuItem onClick={() => {
                           openTutorial(TUT_ANNOUNCEMENTS);
+                          setPipAccordionOpen(true);
                         }} >Announcements</MenuItem>
                         <MenuItem onClick={() => {
                           openTutorial(TUT_RECORDED_SERMON);
@@ -448,14 +558,22 @@ export default function Home() {
                         }} >Worship Again</MenuItem>
                         <MenuItem onClick={() => {
                           openTutorial(TUT_OUTRO);
-                          //setLiveChannel(2);
-                          //setPipEnabled(true);
-                          //setChromaKeyEnabled(false);
-                          //changePipPosition('B');
                         }} >Visitor&apos;s Outro Video</MenuItem>
                       </MenuGroup>
                     </MenuList>
                   </Menu>
+                </Slide>
+                <Slide direction='right' duration='500' triggerOnce >
+                  <Button colorScheme={obsScrollEnable?"green":"red"} leftIcon={obsScrollEnable ? <IoCheckmarkCircleOutline /> : <IoCloseCircleOutline />} 
+                    _hover={{ bg: `${obsScrollEnable?'green':'red'}.400` }}
+                    _focus={{ boxShadow: "outline" }}
+                    boxShadow="0 0px 12px 0 rgba(0, 196, 170, 1)"
+                    onClick={() => setObsScrollEnable(!obsScrollEnable)}
+                  >
+                    Autoscroll
+                  </Button>
+                </Slide>
+                <Slide direction='right' duration='500' triggerOnce >
                   <Button colorScheme="orange" leftIcon={<RiRemoteControl2Line />} 
                     _hover={{ bg: "orange.400" }}
                     _focus={{ boxShadow: "outline" }}
@@ -472,18 +590,18 @@ export default function Home() {
               <VStack>
                 <NavbarSpace />
                 <VStack spacing={4} w="100%" h='100%' align="center" justify="center">
-                  <Heading textAlign='center' m={4} color='white' fontSize="4xl" fontWeight="extrabold" >
-                    Display
+                  <Heading className='main-heading' textAlign='center' m={4} color='white' fontSize="4xl" fontWeight="extrabold" >
+                    Livestream
                   </Heading>
                   <HStack spacing='4' wrap='wrap' align="center" justify="center" >
-                    <ImageSelector buttonClassName='cam1-slides' buttonColor='pink' data={cam1Images} buttonIcon={<BsCameraVideoFill />}
+                    <ImageSelector buttonClassName='cam1-images' buttonColor='pink' data={cam1Images} buttonIcon={<BsCameraVideoFill />}
                       updateCallback={(imageUrl) => {
                         setCam1ImageUrl(imageUrl);
                       }}
                     >
                       Camera 1
                     </ImageSelector>
-                    <ImageSelector buttonClassName='cam2-slides' buttonColor='pink' data={cam2Images} buttonIcon={<BsCameraVideoFill />}
+                    <ImageSelector buttonClassName='cam2-images' buttonColor='pink' data={cam2Images} buttonIcon={<BsCameraVideoFill />}
                       updateCallback={(imageUrl) => {
                         setCam2ImageUrl(imageUrl);
                       }}
@@ -500,41 +618,61 @@ export default function Home() {
                   </HStack>
                   
                   <HStack spacing='4' wrap='wrap' align="center" justify="center" >
-                    <Menu isLazy >
-                      <MenuButton className='macros-menu' as={Button} colorScheme="purple" rightIcon={<AiOutlineCaretDown />}
-                        _hover={{ bg: "purple.400" }}
-                        _expanded={{ bg: "purple.400" }}
-                        _focus={{ boxShadow: "outline" }}
-                      >
-                        Macros
-                      </MenuButton>
-                      <MenuList>
-                        <MenuItem onClick={() => {
-                          setLiveChannel(2);
-                          setPipEnabled(true);
-                          setChromaKeyEnabled(false);
-                          changePipPosition('B');
-                        }} >Announcements</MenuItem>
-                        <MenuItem onClick={() => {
-                          setChromaKeyEnabled(true);
-                          setPipEnabled(false);
-                        }} >GreenScreenFull</MenuItem>
-                      </MenuList>
-                    </Menu>
-                    <MotionButton colorScheme='yellow' leftIcon={<MdContentCut />} onClick={() => setCropped(!cropped)} >
+                    <Fade triggerOnce>
+                      <Menu isLazy >
+                        <MenuButton className='macros-menu' as={Button} colorScheme="purple" rightIcon={<AiOutlineCaretDown />}
+                          _hover={{ bg: "purple.400" }}
+                          _expanded={{ bg: "purple.400" }}
+                          _focus={{ boxShadow: "outline" }}
+                        >
+                          Macros
+                        </MenuButton>
+                        <MenuList>
+                          <MenuItem onClick={() => {
+                            setLiveChannel(2);
+                            setPipEnabled(true);
+                            setChromaKeyEnabled(false);
+                            changePipPosition('B');
+                          }} >Announcements</MenuItem>
+                          <MenuItem onClick={() => {
+                            setChromaKeyEnabled(true);
+                            setPipEnabled(false);
+                          }} >GreenScreenFull</MenuItem>
+                        </MenuList>
+                      </Menu>
+                    </Fade>
+                    <MotionButton m='2' colorScheme='yellow' leftIcon={<MdContentCut />} onClick={() => setCropped(!cropped)} >
                       Transition to {cropped?'uncropped':'cropped'}
                     </MotionButton>
                   </HStack>
 
                   {/* Canvas and Images */}
-                  <HStack spacing='4' align="center" justify="center" >
-                    <Box border='2px' borderColor='white' >
-                        <canvas className='preview-canvas' ref={previewCanvasRef} />
-                    </Box>
+                  <HStack w='100%' wrap='wrap' align="center" justify="center" >
+                    <Slide direction='left' triggerOnce>
+                      <VStack align="center" justify="center" >
+                        <Heading textAlign='center' color='white' fontSize="2xl" fontWeight="extrabold" >
+                          Preview
+                        </Heading>
+                        <MotionBox border='2px' borderColor='white' borderRadius='0'
+                          whileHover={{ borderRadius:'1em', boxShadow:"-10px 10px 0 rgba(115, 255, 224)" } }
+                        >
+                            <canvas className='preview-canvas' ref={previewCanvasRef} />
+                        </MotionBox>
+                      </VStack>
+                    </Slide>
                     <canvas ref={presenterCanvasRef} style={{display: 'none'}} />
-                    <Box border='2px' borderColor='white' >
-                      <canvas className='obs-canvas' ref={obsCanvasRef} />
-                    </Box>
+                    <Slide direction='right' triggerOnce >
+                      <VStack py='2' align="center" justify="center" >
+                        <Heading textAlign='center' color='white' fontSize="2xl" fontWeight="extrabold" >
+                          Live
+                        </Heading>
+                        <MotionBox border='2px' borderColor='white' borderRadius='0' filter=''
+                          whileHover={{ filter:'contrast(125%)', borderRadius:'1em', boxShadow:"10px 10px 0 rgba(115, 255, 224)" } }
+                        >
+                          <canvas className='obs-canvas' ref={obsCanvasRef} />
+                        </MotionBox>
+                      </VStack>
+                    </Slide>
                   </HStack>
                   <ChakraImage ref={obsImageRef}
                     onLoad={() => {
@@ -568,23 +706,23 @@ export default function Home() {
                             </AccordionButton>
                         <AccordionPanel w='100%' >
                           <Flex align="center" justify="center" >
-                            <VStack spacing='4' align="end" justify="end" >
-                              <MicIndicator alignSelf='flex-end' micEnabled={mic1Enabled} volume={mic1Volume} setVolume={setMic1Volume} >
+                            <VStack spacing='4' align="flex-end" justify="end" >
+                              <MicIndicator  micEnabled={mic1Enabled} volume={mic1Volume} setVolume={setMic1Volume} >
                                 Mic 1
                               </MicIndicator>
-                              <MicIndicator alignSelf='flex-end' micEnabled={mic2Enabled} volume={mic2Volume} setVolume={setMic2Volume} >
+                              <MicIndicator micEnabled={mic2Enabled} volume={mic2Volume} setVolume={setMic2Volume} >
                                 Mic 2
                               </MicIndicator>
-                              <MicIndicator alignSelf='flex-end' micEnabled={chan1Enabled} volume={chan1Volume} setVolume={setChan1Volume} >
+                              <MicIndicator micEnabled={chan1Enabled} volume={chan1Volume} setVolume={setChan1Volume} >
                                 Channel 1
                               </MicIndicator>
-                              <MicIndicator alignSelf='flex-end' micEnabled={chan2Enabled} volume={chan2Volume} setVolume={setChan2Volume} >
+                              <MicIndicator micEnabled={chan2Enabled} volume={chan2Volume} setVolume={setChan2Volume} >
                                 Channel 2
                               </MicIndicator>
-                              <MicIndicator alignSelf='flex-end' micEnabled={chan3Enabled} volume={chan3Volume} setVolume={setChan3Volume} >
+                              <MicIndicator micEnabled={chan3Enabled} volume={chan3Volume} setVolume={setChan3Volume} >
                                 Channel 3
                               </MicIndicator>
-                              <MicIndicator alignSelf='flex-end' micEnabled={chan4Enabled} volume={chan4Volume} setVolume={setChan4Volume} >
+                              <MicIndicator micEnabled={chan4Enabled} volume={chan4Volume} setVolume={setChan4Volume} >
                                 Channel 4
                               </MicIndicator>
                             </VStack>
@@ -593,9 +731,9 @@ export default function Home() {
                       </AccordionItem>
                     </Accordion>
                   
-                    <Accordion className='pip-controls' flex='1' p='4' allowToggle index={[pipAccordionOpen?0:-1]} onChange={() => setPipAccordionOpen(!pipAccordionOpen)} >
+                    <Accordion flex='1' p='4' allowToggle index={[pipAccordionOpen?0:-1]} onChange={() => setPipAccordionOpen(!pipAccordionOpen)} >
                         <AccordionItem border='0' >
-                            <AccordionButton py='4' borderRadius='1em' bg='red.500' _hover={{ bg: "tomato", color: "tomato" }} _expanded={{ bg: "tomato", color: "white" }} >
+                            <AccordionButton className='pip-controls' py='4' borderRadius='1em' bg='red.500' _hover={{ bg: "tomato", color: "tomato" }} _expanded={{ bg: "tomato", color: "white" }} >
                               <Icon boxSize='5vh' color="white" pointerEvents='none' as={RiPictureInPictureFill} />
                               <Heading flex="1" textAlign='center' color='white' fontSize="2xl" fontWeight="extrabold" >
                                 PiP Controls
@@ -606,31 +744,31 @@ export default function Home() {
                           <Flex align="center" justify="center" >
                             <VStack spacing='4' align="center" justify="center" w='100%' >
                               <HStack spacing='4' align="center" justify="center" w='100%' >
-                                <MotionButton className='pip-controls-A' w='3.5em' onClick={() => changePipPosition('A')} > {/* setPipDirection('A')*/}
+                                <MotionButton color='white' bg='gray.600' className='pip-controls-A' w='3.5em' onClick={() => changePipPosition('A')} >
                                   A
                                 </MotionButton>
-                                <MotionButton className='pip-controls-B' w='3.5em' onClick={() => changePipPosition('B')} >
+                                <MotionButton color='white' bg='gray.600' className='pip-controls-B' w='3.5em' onClick={() => changePipPosition('B')} >
                                   B
                                 </MotionButton>
-                                <MotionButton className='pip-controls-full' w='3.5em' onClick={() => changePipPosition('Full')} >
+                                <MotionButton color='white' bg='gray.600' className='pip-controls-full' w='3.5em' onClick={() => changePipPosition('Full')} >
                                   Full
                                 </MotionButton>
                               </HStack>
                               <Zoom triggerOnce style={{width:'100%'}} duration={500} >
                                 <VStack className='pip-controls-hide' w='100%'>
-                                  <IconButton icon={<CgArrowUpR />} size='lg' w='4em'  onClick={() => changePipPosition('Up')} >
+                                  <IconButton color='white' bg='gray.600' icon={<CgArrowUpR />} size='lg' w='4em'  onClick={() => changePipPosition('Up')} >
                                     Up
                                   </IconButton>
                                   <HStack w='100%' align="center" justify="center" >
-                                    <IconButton icon={<CgArrowLeftR />} size='lg' w='4em'  onClick={() => changePipPosition('Left')} >
+                                    <IconButton color='white' bg='gray.600' icon={<CgArrowLeftR />} size='lg' w='4em'  onClick={() => changePipPosition('Left')} >
                                       Left
                                     </IconButton>
-                                    <IconButton icon={<ImShrink />} size='lg' w='4em'  onClick={() => changePipPosition('Shrink')} />
-                                    <IconButton icon={<CgArrowRightR />} size='lg' w='4em'  onClick={() => changePipPosition('Right')} >
+                                    <IconButton color='white' bg='gray.600' icon={<ImShrink />} size='lg' w='4em'  onClick={() => changePipPosition('Shrink')} />
+                                    <IconButton color='white' bg='gray.600' icon={<CgArrowRightR />} size='lg' w='4em'  onClick={() => changePipPosition('Right')} >
                                       Right
                                     </IconButton>
                                   </HStack>
-                                  <IconButton icon={<CgArrowDownR />} size='lg' w='4em'  onClick={() => changePipPosition('Down')} >
+                                  <IconButton color='white' bg='gray.600' icon={<CgArrowDownR />} size='lg' w='4em'  onClick={() => changePipPosition('Down')} >
                                     Down
                                   </IconButton>
                                 </VStack>
@@ -648,15 +786,15 @@ export default function Home() {
                   <Heading textAlign='center' pb="8" color='white' fontSize="4xl" fontWeight="extrabold" >
                     Atem Controls
                   </Heading>
-                  <Flex ref={atemRef} my={20} wrap='wrap' align="end" justify="start"
+                  <Flex w={breakpoint==='mobile'?'95vw':'auto'} ref={atemRef} my={20} wrap='wrap' align="center" justify="center"
                     borderRadius='1em'
                     boxShadow='0 10px 4px 5px #666, /*bottom external highlight*/
                                 0 -5px 4px 10px #4f4f4f, /*top external shadow*/ 
                                 inset 0 -1px 1px rgba(0,0,0,0.5), /*bottom internal shadow*/ 
-                                inset 0 1px 1px rgba(255,255,255,0.8)' >
-                    <Flex wrap='wrap' align="end" justify="start" >
-                      <Zoom triggerOnce style={{alignSelf:'flex-end'}} >
-                        <VStack p={4} >
+                                inset 0 1px 10px rgba(255,255,255,0.8)' >
+                    <Flex wrap='wrap' align="flex-end" justify="center" >
+                      <Zoom triggerOnce >
+                        <VStack py={4} px={breakpoint==='mobile' ? 1 : 4 } >
                           <AtemMic className="atem-mic1" micEnabled={mic1Enabled} enableCallback={setMic1Enabled} volumeCallback={(value)=>setMic1Volume(limitVolume(mic1Volume + value))} >
                             MIC 1
                           </AtemMic>
@@ -668,8 +806,8 @@ export default function Home() {
                           </AtemChannel>
                         </VStack>
                       </Zoom>
-                      <Zoom triggerOnce style={{alignSelf:'flex-end'}} >
-                        <VStack p={4} >
+                      <Zoom triggerOnce >
+                        <VStack py={4} px={breakpoint==='mobile' ? 1 : 4 } >
                           <AtemMic micEnabled={mic2Enabled} enableCallback={setMic2Enabled} volumeCallback={(value)=>setMic2Volume(limitVolume(mic2Volume + value))} >
                             MIC 2
                           </AtemMic>
@@ -681,8 +819,8 @@ export default function Home() {
                           </AtemChannel>
                         </VStack>
                       </Zoom>
-                      <Zoom triggerOnce style={{alignSelf:'flex-end'}} >
-                        <VStack p={4} >
+                      <Zoom triggerOnce >
+                        <VStack py={4} px={breakpoint==='mobile' ? 1 : 4 } >
                           <AtemChannel micClassName="atem-micChan3" bigButtonClassName="atem-chan3"
                             pt="4" tooltip='Presenter' isLive={liveChannel==2} isPreview={previewChannel==2} previewOnClick={()=>setPreviewChannel(2)}
                             micEnabled={chan3Enabled} enableCallback={setChan3Enabled} volumeCallback={(value)=>setChan3Volume(limitVolume(chan3Volume + value))}
@@ -691,8 +829,8 @@ export default function Home() {
                           </AtemChannel>
                         </VStack>
                       </Zoom>
-                      <Zoom triggerOnce style={{alignSelf:'flex-end'}} >
-                        <VStack p={4} >
+                      <Zoom triggerOnce >
+                        <VStack py={4} px={breakpoint==='mobile' ? 1 : 4 } >
                           <AtemChannel micClassName="atem-micChan4" bigButtonClassName="atem-chan4"
                             pt="4" tooltip='Cam 2' isLive={liveChannel==3} isPreview={previewChannel==3} previewOnClick={()=>setPreviewChannel(3)}
                             micEnabled={chan4Enabled} enableCallback={setChan4Enabled} volumeCallback={(value)=>setChan4Volume(limitVolume(chan4Volume + value))}
@@ -703,18 +841,18 @@ export default function Home() {
                       </Zoom>
                     </Flex>
                     <Flex wrap='wrap' alignSelf='flex-end' align="end" justify="start" >
-                      <Zoom triggerOnce style={{alignSelf:'flex-end'}} >
-                        <VStack p={4} >
-                          <Flex align="center" justify="center" >
-                            <AtemPiP enabled={pipEnabled} enableCallback={setPipEnabled} />
-                            <VStack ml="16" align="center" justify="center" >
+                      <Zoom triggerOnce >
+                        <VStack py={4} px={breakpoint==='mobile' ? 1 : 4 } >
+                          <Flex align="start" justify="center" >
+                            <AtemPiP className='atem-pip-enable' enabled={pipEnabled} enableCallback={setPipEnabled} />
+                            <VStack className='atem-chroma-key-enable' ml="4vh" align="center" justify="center" >
                                 <AtemMiniButton className='atem-chroma-key-on' highlight={chromaKeyEnabled} onClick={() => setChromaKeyEnabled(true)} >
                                     ON
                                 </AtemMiniButton>
                                 <AtemMiniButton className='atem-chroma-key-off' highlight={!chromaKeyEnabled} onClick={() => setChromaKeyEnabled(false)} >
                                     OFF
                                 </AtemMiniButton>
-                                <Heading textAlign='center' px={8} m={4} color='white' fontSize="md" fontWeight="bold" >
+                                <Heading textAlign='center' color='white' fontSize="md" fontWeight="bold" >
                                   KEY
                                 </Heading>
                             </VStack>
@@ -729,22 +867,7 @@ export default function Home() {
                       </Zoom>
                     </Flex>
                   </Flex>
-
                 </VStack>
-                <Joyride
-                  scrollToFirstStep
-                  scrollOffset={100}
-                  run={runTutorial}
-                  stepIndex={tutorialStep}
-                  steps={tutorialType}
-                  continuous={true}
-                  showProgress={true}
-                  showSkipButton={true}
-                      locale={{
-                      last: "End Guide",
-                  }}
-                  callback={joyrideCallback}
-                />
               </VStack>
 
             </main>
@@ -754,36 +877,3 @@ export default function Home() {
         </div>
   )
 }
-
-/*
-
-                  <Flex align='center' justify='center'>
-                    <Heading textAlign='center' m={4} color='white' fontSize="lg" fontWeight="semibold" >
-                      PiP
-                    </Heading>
-                    <Switch colorScheme='purple' size='md' />
-                </Flex>
-
-                      <Heading textAlign='center' px={8} m={4} color='white' fontSize={breakpoint==='base'?'2xl':'6xl'} fontWeight="extrabold" >
-                        Bla bla
-                      </Heading>
-                      <Divider borderWidth={1} borderColor='gray.50' />
-                      <MotionGetAttention attentionType='expand' >
-                        <Button mt={4} rightIcon={<MdNavigateNext />} colorScheme={"purple"} >
-                          Get Started
-                        </Button>
-                      </MotionGetAttention>
-  */
-
-          /*
-          //const tolerance = 160;
-        const diff = Math.abs(presenterImageData[i] - presenterImageData[0]) + Math.abs(presenterImageData[i+1] - presenterImageData[1]) + Math.abs(presenterImageData[i+2] - presenterImageData[2]);
-        if(diff < tolerance) {
-          //presenterImageData[i + 3] = 0;
-        }
-        else {
-          obsImageData[i] =  presenterImageData[i];
-          obsImageData[i + 1] =  presenterImageData[i + 1];
-          obsImageData[i + 2] =  presenterImageData[i + 2];
-          obsImageData[i + 3] =  presenterImageData[i + 3];
-        }*/

@@ -23,7 +23,7 @@ export default memo(function AtemMic({children, micEnabled, enableCallback, volu
                     </AtemMiniButton>
                 </VStack>
             </Flex>
-            <Heading textAlign='center' px={8} m={4} color='white' fontSize="md" fontWeight="bold" >
+            <Heading textAlign='center' px='0' mt='4' color='white' fontSize="md" fontWeight="bold" >
                 {children}
             </Heading>
         </VStack>

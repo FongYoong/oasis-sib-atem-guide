@@ -24,7 +24,7 @@ export default memo(function AtemPiP({enabled, enableCallback, ...props}) {
                     </AtemMiniButton>
                 </VStack>
             </Flex>
-            <Heading textAlign='center' px={8} m={4} color='white' fontSize="md" fontWeight="bold" >
+            <Heading textAlign='center' px='0' mt='4' color='white' fontSize="md" fontWeight="bold" >
                 PICTURE IN PICTURE
             </Heading>
         </VStack>
