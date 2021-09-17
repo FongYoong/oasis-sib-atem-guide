@@ -1,7 +1,6 @@
 import Head from 'next/head';
 import dynamic from 'next/dynamic';
-//import { useRouter } from 'next/router';
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Zoom, Fade, Slide } from "react-awesome-reveal";
 import { MotionButton, MotionBox } from '../components/MotionElements';
 import { TUT_FAQ_CHANGE_SLIDE, TUT_FAQ_TOUR,
@@ -12,7 +11,7 @@ const Joyride = dynamic(
   () => import('react-joyride'),
   { ssr: false }
 );
-import { useBreakpointValue, Image as ChakraImage, Button, HStack, Box, Divider, Heading, Flex, VStack, Icon, IconButton,
+import { useBreakpointValue, Image as ChakraImage, Button, HStack, Divider, Heading, Flex, VStack, Icon, IconButton, Portal,
 Accordion,
 AccordionItem,
 AccordionButton,
@@ -33,17 +32,25 @@ import AtemMiniButton from '../components/atem/AtemMiniButton';
 import AtemBigButton from '../components/atem/AtemBigButton';
 import MicIndicator from '../components/atem/MicIndicator';
 import ImageSelector from '../components/ImageSelector';
-import {presenterImages} from '../lib/presenterData';
-import {cam1Images, cam2Images} from '../lib/camData';
-import { MdContentCut } from "react-icons/md";
+import { presenterImages } from '../lib/presenterData';
+import { cam1Images, cam2Images } from '../lib/camData';
+import { MdContentCut, MdTexture } from "react-icons/md";
 import { BsCameraVideoFill } from "react-icons/bs";
 import { FaDesktop } from "react-icons/fa";
 import { RiRemoteControl2Line, RiPictureInPictureFill, RiQuestionLine } from "react-icons/ri";
 import { AiFillAudio, AiOutlineCaretDown, AiOutlineCaretUp } from "react-icons/ai";
 import { ImShrink } from "react-icons/im";
+import { HiSpeakerphone } from "react-icons/hi";
 import { GrResume, GrWaypoint } from "react-icons/gr";
 import { CgArrowUpR, CgArrowDownR, CgArrowLeftR, CgArrowRightR } from "react-icons/cg";
 import { IoCheckmarkCircleOutline, IoCloseCircleOutline } from "react-icons/io5";
+
+const channelNames = {
+  0: 'Camera 1',
+  1: 'Channel 2 - Unused',
+  2: 'Presenter',
+  3: 'Camera 2'
+}
 
 const limitVolume = (value) => {
   return Math.min(Math.max(value, 0), 100);
@@ -119,13 +126,13 @@ export default function Home() {
     const [tutorialStep, setTutorialStep] = useState(0);
     const [runTutorial, setRunTutorial] = useState(false);
     const [resumeTutorial, setResumeTutorial] = useState(false);
-    const openTutorial = (steps) => {
+    const openTutorial = useCallback((steps) => {
         setTutorialStep(0);
         setTutorialType(steps);
         setRunTutorial(true);
         setResumeTutorial(false);
-    };
-    const joyrideCallback = (state) => {
+    }, []);
+    const joyrideCallback = useCallback((state) => {
         // action, index, status, type or (event)
         if ([EVENTS.STEP_AFTER, EVENTS.TARGET_NOT_FOUND].includes(state.type)) {
           if (state.action === ACTIONS.NEXT) {
@@ -143,7 +150,7 @@ export default function Home() {
           setRunTutorial(false);
           setTutorialStep(0);
         }
-    };
+    }, [tutorialStep]);
 
     useEffect(() => {
       // Canvas
@@ -234,14 +241,14 @@ export default function Home() {
       setLocalStorageEnable(true);
     }, [breakpoint]);
 
-    const scrollToOBS = () => {
+    const scrollToOBS = useCallback(() => {
       if (obsScrollEnableRef.current) {
         obsCanvasRef.current.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"});
       }
-    };
+    }, []);
 
     // Display canvas functions
-    const displayPreview = () => {
+    const displayPreview = useCallback(() => {
       const previewCanvas = previewCanvasRef.current;
       const previewContext = previewCanvas.getContext('2d');
       const previewImageElement = previewImageRef.current;
@@ -249,9 +256,9 @@ export default function Home() {
         // Draw Preview Image
         previewContext.drawImage(previewImageElement, 0, 0, previewCanvas.width, previewCanvas.height);
       }
-    };
+    }, []);
 
-    const displayOBS = () => {
+    const displayOBS = useCallback(() => {
       const obsCanvas = obsCanvasRef.current;
       const obsContext = obsCanvas.getContext('2d');
       const obsImageElement = obsImageRef.current;
@@ -259,9 +266,9 @@ export default function Home() {
         // Draw OBS Image
         obsContext.drawImage(obsImageElement, 0, 0, obsCanvas.width, obsCanvas.height);
       }
-    };
+    }, []);
 
-    const displayPresenter = () => {
+    const displayPresenter = useCallback(() => {
       // OBS
       const obsCanvas = obsCanvasRef.current;
       const obsContext = obsCanvas.getContext('2d');
@@ -329,7 +336,7 @@ export default function Home() {
         obsContext.lineTo(width, height);
         obsContext.stroke();
       }
-    }
+    }, []);
 
     useEffect(() => {
       displayOBS();
@@ -381,7 +388,7 @@ export default function Home() {
       mic1Enabled, mic1Volume, chan1Enabled, chan1Volume, chan3Enabled, chan3Volume, chan4Enabled, chan4Volume
     ]);
 
-    const animatePiP = () => {
+    const animatePiP = useCallback(() => {
       if (animProgressRef.current < 1){
         const animProgress = animProgressRef.current;
         animCanvasXRef.current = animCanvasXRef.current + animProgress * (animCanvasXFinalRef.current - animCanvasXRef.current);
@@ -396,9 +403,9 @@ export default function Home() {
       else{
           cancelAnimationFrame(animRequestRef.current);
       }
-    }
+    }, [displayOBS, displayPresenter]);
 
-    const changePipPosition = (dir) => {
+    const changePipPosition = useCallback((dir) => {
       const cw = obsCanvasRef.current.width;
       const ch = obsCanvasRef.current.height;
       let x, y, w, h;
@@ -458,7 +465,7 @@ export default function Home() {
       cancelAnimationFrame(animRequestRef.current);
       animRequestRef.current = requestAnimationFrame(animatePiP);
       setPipDirection(dir);
-    }
+    }, [animatePiP]);
 
     return (
         <div>
@@ -619,7 +626,7 @@ export default function Home() {
                   
                   <HStack spacing='4' wrap='wrap' align="center" justify="center" >
                     <Fade triggerOnce>
-                      <Menu isLazy >
+                      <Menu isLazy strategy='fixed' >
                         <MenuButton className='macros-menu' as={Button} colorScheme="purple" rightIcon={<AiOutlineCaretDown />}
                           _hover={{ bg: "purple.400" }}
                           _expanded={{ bg: "purple.400" }}
@@ -627,18 +634,20 @@ export default function Home() {
                         >
                           Macros
                         </MenuButton>
-                        <MenuList>
-                          <MenuItem onClick={() => {
-                            setLiveChannel(2);
-                            setPipEnabled(true);
-                            setChromaKeyEnabled(false);
-                            changePipPosition('B');
-                          }} >Announcements</MenuItem>
-                          <MenuItem onClick={() => {
-                            setChromaKeyEnabled(true);
-                            setPipEnabled(false);
-                          }} >GreenScreenFull</MenuItem>
-                        </MenuList>
+                        <Portal>
+                          <MenuList>
+                            <MenuItem icon={<HiSpeakerphone />} onClick={() => {
+                              setLiveChannel(2);
+                              setPipEnabled(true);
+                              setChromaKeyEnabled(false);
+                              changePipPosition('B');
+                            }} >Announcements</MenuItem>
+                            <MenuItem icon={<MdTexture />} onClick={() => {
+                              setChromaKeyEnabled(true);
+                              setPipEnabled(false);
+                            }} >GreenScreenFull</MenuItem>
+                          </MenuList>
+                        </Portal>
                       </Menu>
                     </Fade>
                     <MotionButton m='2' colorScheme='yellow' leftIcon={<MdContentCut />} onClick={() => setCropped(!cropped)} >
@@ -651,7 +660,7 @@ export default function Home() {
                     <Slide direction='left' triggerOnce>
                       <VStack align="center" justify="center" >
                         <Heading textAlign='center' color='white' fontSize="2xl" fontWeight="extrabold" >
-                          Preview
+                          Preview ({channelNames[previewChannel]})
                         </Heading>
                         <MotionBox border='2px' borderColor='white' borderRadius='0'
                           whileHover={{ borderRadius:'1em', boxShadow:"-10px 10px 0 rgba(115, 255, 224)" } }
@@ -664,7 +673,7 @@ export default function Home() {
                     <Slide direction='right' triggerOnce >
                       <VStack py='2' align="center" justify="center" >
                         <Heading textAlign='center' color='white' fontSize="2xl" fontWeight="extrabold" >
-                          Live
+                          Live ({channelNames[liveChannel]})
                         </Heading>
                         <MotionBox border='2px' borderColor='white' borderRadius='0' filter=''
                           whileHover={{ filter:'contrast(125%)', borderRadius:'1em', boxShadow:"10px 10px 0 rgba(115, 255, 224)" } }

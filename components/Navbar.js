@@ -1,30 +1,33 @@
-import { memo, useState, useRef, useEffect } from 'react';
+import { memo, useCallback } from 'react';
 import { useRouter } from 'next/router';
-import Link from 'next/link';
-import { useColorMode, useColorModeValue, useBreakpointValue, Avatar, AvatarBadge, HStack, Button, IconButton, Flex, Heading,
-AlertDialog, AlertDialogBody, AlertDialogFooter, AlertDialogHeader, AlertDialogContent, AlertDialogOverlay,
-Menu, MenuButton, MenuList, MenuItem, MenuGroup, MenuDivider,
+import { useBreakpointValue, HStack, IconButton, Flex, Heading,
 } from '@chakra-ui/react';
-import { motion } from "framer-motion";
-import { MotionButton } from "./MotionElements";
-import { BsSun, BsMoon } from 'react-icons/bs';
-import { FiLogOut } from 'react-icons/fi';
+import { MotionButton } from '../components/MotionElements';
 import { IoLogoGithub } from 'react-icons/io5';
-import { HiOutlineMail } from 'react-icons/hi';
-import { AiOutlineUser } from 'react-icons/ai';
- 
+import { ImBook } from 'react-icons/im';
+
+
+
+
 const Navbar = () => {
     const router = useRouter();
     const breakpoint = useBreakpointValue({ base: "base", md: "base", lg: "lg" });
 
+    const openURLNewTab = useCallback((url) => {
+        window.open(url,'_blank').focus();
+    }, []);
+
     return (
         <>
-        <Flex zIndex={1000} bg="gray.700" position="fixed" w="100%" align="center" justify="space-between" p={breakpoint==="base"? "0.4em": "1.5em"}>
+        <Flex zIndex={1000} bg="gray.600" position="fixed" w="100%" align="center" justify="space-between" p={breakpoint==="base"? "0.4em": "1.5em"}>
             <HStack spacing={4}>
-                <IconButton icon={<IoLogoGithub size={25} />} onClick={() => router.push('https://github.com/FongYoong/data-logger-nextjs')}/>
+                <IconButton icon={<IoLogoGithub size={25} />} onClick={() => openURLNewTab("https://github.com/FongYoong/oasis-sib-atem-guide")}/>
                 <Heading color='white' fontSize={["sm", "md", "lg", "2xl"]} onClick={() => router.push('/')} as="button">
-                        Atem Guide
+                        Oasis SIB Atem Guide
                 </Heading>
+                <MotionButton ml='2' colorScheme='purple' leftIcon={<ImBook />} onClick={() => openURLNewTab("https://fongyoong.github.io/oasis-sib-media-guide/")} >
+                    Docs
+                </MotionButton>
             </HStack>
         </Flex>
     </>

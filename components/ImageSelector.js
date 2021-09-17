@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, memo } from 'react';
+import { useState, useRef, useEffect, memo, useCallback } from 'react';
 import { Zoom, Slide } from "react-awesome-reveal";
 import { useDisclosure, Box, Flex, Button, IconButton, ButtonGroup, Tabs, TabList, TabPanels, Tab, TabPanel, Icon, Image as ChakraImage,
 Modal,
@@ -18,13 +18,16 @@ import { FiPlusCircle, FiMinusCircle } from 'react-icons/fi';
   return (v * h) / 100;
 } */
 
-function vw(v) {
-  var w = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
-  return (v * w) / 100;
-}
+
 
 
 export default memo(function ImageSelector({children, buttonClassName, buttonIcon, buttonColor, data, updateCallback}) {
+
+    const vw = useCallback((v) => {
+        var w = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
+        return (v * w) / 100;
+    }, []);
+
     const modalState = useDisclosure();
     const [selectedCategoryIndex, setSelectedCategoryIndex] = useState(0);
     const [selectedCategory, setSelectedCategory] = useState(Object.keys(data)[0]);
@@ -37,7 +40,7 @@ export default memo(function ImageSelector({children, buttonClassName, buttonIco
     hoverShowRef.current = hoverShow;
     const [hoverImageURL, setHoverImageURL] = useState(data[Object.keys(data)[0]][0]);
 
-    const changeIndex = (change) => {
+    const changeIndex = useCallback((change) => {
         const nextIndex = selectedImageIndex + change;
         if (data[selectedCategory][nextIndex]) {
             setSelectedImageIndex(nextIndex);
@@ -46,12 +49,10 @@ export default memo(function ImageSelector({children, buttonClassName, buttonIco
             const nextCategoryIndex = selectedCategoryIndex + change;
             let nextCategory = Object.keys(data)[nextCategoryIndex];
             if (nextCategory) {
-                //alert('next category')
                 setSelectedCategoryIndex(nextCategoryIndex);
                 setSelectedCategory(nextCategory);
             }
             else {
-                //alert('overflow category')
                 const newIndex = change > 0 ? 0 : (Object.keys(data).length - 1);
                 nextCategory = Object.keys(data)[newIndex];
                 setSelectedCategoryIndex(newIndex);
@@ -59,14 +60,14 @@ export default memo(function ImageSelector({children, buttonClassName, buttonIco
             }
             setSelectedImageIndex(change > 0 ? 0 : (data[nextCategory].length - 1));
         }
-    }
+    }, [data, selectedCategory, selectedCategoryIndex, selectedImageIndex]);
 
-    const updateHoverImagePos = (event) => {
+    const updateHoverImagePos = useCallback((event) => {
         if (hoverImageRef.current) {
             hoverImageRef.current.style.left = event.clientX - vw(10) + 'px';
             hoverImageRef.current.style.top = event.clientY + vw(2) + 'px';
         }
-    };
+    }, [vw]);
 
     useEffect(() => {
         // Button Hover
