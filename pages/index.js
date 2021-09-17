@@ -341,7 +341,7 @@ export default function Home() {
     useEffect(() => {
       displayOBS();
       displayPresenter();
-    }, [presenterImageURL, obsImageURL, pipEnabled, pipDirection, chromaKeyEnabled, cropped]);
+    }, [presenterImageURL, obsImageURL, cam1ImageUrl, pipEnabled, pipDirection, chromaKeyEnabled, cropped]);
 
     useEffect(() => {
       scrollToOBS();

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, memo, useCallback } from 'react';
 import { Zoom, Slide } from "react-awesome-reveal";
-import { useDisclosure, Box, Flex, Button, IconButton, ButtonGroup, Tabs, TabList, TabPanels, Tab, TabPanel, Icon, Image as ChakraImage,
+import { useDisclosure, Box, Flex, Button, IconButton, ButtonGroup, Tabs, TabList, TabPanels, Tab, TabPanel, Icon, Image as ChakraImage, Tooltip,
 Modal,
 ModalOverlay,
 ModalContent,
@@ -17,9 +17,6 @@ import { FiPlusCircle, FiMinusCircle } from 'react-icons/fi';
   var h = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
   return (v * h) / 100;
 } */
-
-
-
 
 export default memo(function ImageSelector({children, buttonClassName, buttonIcon, buttonColor, data, updateCallback}) {
 
@@ -114,10 +111,13 @@ export default memo(function ImageSelector({children, buttonClassName, buttonIco
             opacity={hoverShow? 1 : 0} transition='opacity 0.5s'  border='2px' borderColor='white' boxShadow="0 0px 24px 0 rgba(0, 196, 170, 1)"
         />
         <ButtonGroup isAttached py='2'>
+                        
             <Slide direction='left' duration='300'>
-                <IconButton aria-label="Minus" variant='outlined' icon={<FiMinusCircle color='white' />}
-                    onClick={() => changeIndex(-1)}
-                />
+                <Tooltip hasArrow label={'Previous'} >
+                    <IconButton aria-label="Minus" variant='outlined' icon={<FiMinusCircle color='white' />}
+                        onClick={() => changeIndex(-1)}
+                    />
+                </Tooltip>
             </Slide>
             <MotionButton className={buttonClassName} leftIcon={buttonIcon} colorScheme={buttonColor}
                 onMouseEnter={(event) => {
@@ -132,9 +132,11 @@ export default memo(function ImageSelector({children, buttonClassName, buttonIco
                 {children}
             </MotionButton>
             <Slide direction='right' duration='300'>
-                <IconButton aria-label="Add" variant='outlined' icon={<FiPlusCircle color='white' />}
-                    onClick={() => changeIndex(1)}
-                />
+                <Tooltip hasArrow label={'Next'} >
+                    <IconButton aria-label="Add" variant='outlined' icon={<FiPlusCircle color='white' />}
+                        onClick={() => changeIndex(1)}
+                    />
+                </Tooltip>
             </Slide>
         </ButtonGroup>
         <Modal size='full' isOpen={modalState.isOpen} onClose={modalState.onClose}>
